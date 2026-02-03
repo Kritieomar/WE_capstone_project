@@ -21,7 +21,7 @@ function App() {
 
 
   // Get latest block via MetaMask
-  const handleButton2 = async () => {
+  const handleButton = async () => {
     try {
       const provider = getMetaMaskProvider();
       if (!provider) return;
@@ -65,7 +65,7 @@ function App() {
         <h3>Get latest block number</h3>
 
         
-        <button onClick={handleButton2}>
+        <button onClick={handleButton}>
           Using MetaMask
         </button>
 
