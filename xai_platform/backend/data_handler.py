@@ -6,20 +6,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def load_dataset(csv_path):
-    """
-    Loads a CSV dataset using pandas.
-    
-    Args:
-        csv_path (str): The path to the CSV file.
-        
-    Returns:
-        pd.DataFrame: The loaded dataset.
-        
-    Raises:
-        FileNotFoundError: If the file does not exist.
-        pd.errors.EmptyDataError: If the file is empty.
-        Exception: For other errors during loading.
-    """
+
     if not os.path.exists(csv_path):
         error_msg = f"Error loading dataset: The file {csv_path} was not found."
         logging.error(error_msg)
