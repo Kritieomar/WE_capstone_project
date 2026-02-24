@@ -1,8 +1,13 @@
 explainerdashboard
 google-generativeai
 scikit-learn
+shap
 pandas
 numpy
 streamlit
 matplotlib
 joblib
+fastapi
+uvicorn
+python-multipart
+explainerdashboard
