@@ -1,3 +1,11 @@
-{
-    "__comment__": "File to store user sessions data representation"
-}
+[
+    {
+        "timestamp": "2026-03-05T00:08:17.158373",
+        "model_name": "RandomForest_v1",
+        "dataset_name": "Testing_Data_A",
+        "metrics": {
+            "accuracy": 0.95,
+            "f1_score": 0.94
+        }
+    }
+]
