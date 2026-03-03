@@ -1,7 +1,8 @@
+explainerdashboard
+google-generativeai
 scikit-learn
-shap
-streamlit
 pandas
 numpy
+streamlit
 matplotlib
 joblib
