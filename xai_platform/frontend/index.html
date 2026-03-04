@@ -21,8 +21,7 @@
                 <a href="#section-overview" class="active">Overview</a>
                 <a href="#section-feature-importance">Feature<br>Importance</a>
                 <a href="#section-shap-analysis">SHAP<br>Analysis</a>
-                <a href="#section-model-performance">Model<br>Performance</a>
-                <a href="#section-predict-explain">Predict &<br>Explain</a>
+                <a href="#section-predict-explain">What-If<br>Simulator</a>
                 <a href="#section-data-insights">Data<br>Insights</a>
             </nav>
         </div>
@@ -160,78 +159,7 @@
                         <div class="chart-wrapper" id="chartPie"></div>
                     </div>
                 </div>
-            </div>
-
-            <!-- FEATURE IMPORTANCE -->
-            <div class="dash-view" id="section-feature-importance">
-                <div class="section-heading">
-                    <h2>Feature Importance</h2>
-                    <p>Which features does your model rely on most when making predictions?</p>
-                </div>
-                <div class="insight-banner">
-                    💡 Feature importance tells you HOW MUCH each input variable contributes to the model's decisions on average. A high score means the model relies heavily on that feature.
-                </div>
-
-                <div class="dash-card full">
-                    <div class="chart-wrapper" id="chartFeatureImportance" style="min-height: 400px;"></div>
-                </div>
-                <div class="feature-cards-grid" id="featureImportanceGrid">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- SHAP ANALYSIS -->
-            <div class="dash-view" id="section-shap-analysis">
-                <div class="section-heading">
-                    <h2>SHAP Value Analysis</h2>
-                    <p>Why did the model predict what it predicted for a specific sample?</p>
-                </div>
-                <div class="insight-banner">
-                    💡 SHAP (SHapley Additive exPlanations) shows the contribution of each feature to pushing the prediction higher (positive, green) or lower (negative, red) from the baseline.
-                </div>
-
-                <div class="dash-card full shap-local-card">
-                    <div class="shap-controls">
-                        <label>Explain Sample Index:</label>
-                        <input type="number" id="localRowInput" class="num-input" value="0" min="0">
-                        <button class="btn-outline" id="explainRowBtn">Explain Sample</button>
-                    </div>
-                    
-                    <div class="prediction-bar">
-                        <div class="pred-left">
-                            <span class="pred-label">SAMPLE #<span id="dispSampleIdx">0</span> PREDICTION</span>
-                            <div class="pred-outcome" id="dispPredOutcome">APPROVED</div>
-                        </div>
-                        <div class="pred-right">
-                            <div class="pred-val-text">Base value: <span id="dispBaseVal">0.00</span></div>
-                            <div class="pred-val-text">Final output: <span id="dispFinalVal">0.00</span></div>
-                        </div>
-                    </div>
-
-                    <div class="chart-wrapper" id="chartLocalShap" style="min-height: 300px;"></div>
-
-                    <div class="shap-summary-text" id="shapExplanationText">
-                        <!-- Populated dynamically via AI or basic logic -->
-                    </div>
-                </div>
-                
-                <div class="dash-card full mt-4">
-                    <div class="card-title">SHAP Summary (Global)</div>
-                    <div class="chart-wrapper" id="chartGlobalShap" style="min-height: 400px;"></div>
-                </div>
-            </div>
-
-            <!-- MODEL PERFORMANCE -->
-            <div class="dash-view" id="section-model-performance">
-                <div class="section-heading">
-                    <h2>Model Performance Metrics</h2>
-                    <p>A deep-dive into classification accuracy, error types, and overall reliability.</p>
-                </div>
-                <div class="insight-banner">
-                    💡 These metrics evaluate the model against the provided dataset. Precision = 'when the model says yes, how often is it right?' Recall = 'of all actual yes cases, how many did the model catch?'
-                </div>
-
-                <div class="metrics-row quad">
+                <div class="metrics-row quad mt-4">
                     <div class="metric-box">
                         <div class="m-icon">🎯</div>
                         <div class="m-label">ACCURACY</div>
@@ -285,45 +213,132 @@
                 </div>
             </div>
 
-            <!-- PREDICT & EXPLAIN -->
+            <!-- FEATURE IMPORTANCE -->
+            <div class="dash-view" id="section-feature-importance">
+                <div class="section-heading">
+                    <h2>Feature Importance</h2>
+                    <p>Which features does your model rely on most when making predictions?</p>
+                </div>
+                <div class="insight-banner">
+                    💡 Feature importance tells you HOW MUCH each input variable contributes to the model's decisions on average. A high score means the model relies heavily on that feature.
+                </div>
+
+                <div class="dash-card full">
+                    <div class="chart-wrapper" id="chartFeatureImportance" style="min-height: 400px;"></div>
+                </div>
+            </div>
+
+            <!-- SHAP ANALYSIS -->
+            <div class="dash-view" id="section-shap-analysis">
+                <div class="section-heading">
+                    <h2>SHAP Value Analysis</h2>
+                    <p>Why did the model predict what it predicted for a specific sample?</p>
+                </div>
+                <div class="insight-banner">
+                    💡 SHAP (SHapley Additive exPlanations) shows the contribution of each feature to pushing the prediction higher (positive, green) or lower (negative, red) from the baseline.
+                </div>
+
+                <div class="dash-card full shap-local-card">
+                    <div class="shap-controls">
+                        <label>Explain Sample Index:</label>
+                        <input type="number" id="localRowInput" class="num-input" value="0" min="0">
+                        <button class="btn-outline" id="explainRowBtn">Explain Sample</button>
+                    </div>
+                    
+                    <div class="prediction-bar">
+                        <div class="pred-left">
+                            <span class="pred-label">SAMPLE #<span id="dispSampleIdx">0</span> PREDICTION</span>
+                            <div class="pred-outcome" id="dispPredOutcome">APPROVED</div>
+                        </div>
+                        <div class="pred-right">
+                            <div class="pred-val-text">Base value: <span id="dispBaseVal">0.00</span></div>
+                            <div class="pred-val-text">Final output: <span id="dispFinalVal">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <div class="chart-wrapper" id="chartLocalShap" style="min-height: 300px;"></div>
+
+                    <div class="shap-summary-text" id="shapExplanationText">
+                        <!-- Populated dynamically via AI or basic logic -->
+                    </div>
+                </div>
+            </div>
+
             <div class="dash-view" id="section-predict-explain">
                  <div class="section-heading">
                     <h2>What-If Simulator</h2>
-                    <p>Modify feature values to see how the prediction changes in real-time.</p>
+                    <p>Modify feature values of a selected instance to see how the prediction changes in real-time, instantly explained by SHAP.</p>
                 </div>
-                <div class="dash-card full">
-                    <div class="whatif-container">
-                        <div class="whatif-form" id="whatifInputs">
+
+                <div class="dash-card full whatif-controls-card">
+                    <div class="shap-controls">
+                        <label>Select Instance Index:</label>
+                        <input type="number" id="whatifRowInput" class="num-input" value="0" min="0">
+                        <button class="btn-outline" id="loadWhatIfBtn">Load Instance</button>
+                        <button class="btn-primary ml-2" id="execWhatIfBtn">Run Simulation</button>
+                        <button class="btn-outline ml-auto" id="resetWhatIfBtn" style="margin-left: auto;">Reset to Original</button>
+                    </div>
+                </div>
+
+                <div class="whatif-split-layout">
+                    <!-- Left: Inputs -->
+                    <div class="dash-card whatif-left">
+                        <div class="card-title">Editable Features</div>
+                        <p class="card-desc">Tweak these values to simulate scenarios.</p>
+                        <div class="whatif-form-grid" id="whatifInputs">
                             <!-- Populated dynamically -->
                         </div>
-                        <div class="whatif-action">
-                             <button class="btn-primary" id="whatifBtn">Run Simulation</button>
-                             <div class="whatif-result" id="whatifResult" style="display:none;"></div>
+                    </div>
+
+                    <!-- Right: Results & Explanation -->
+                    <div class="dash-card whatif-right">
+                        <div class="card-title">Prediction Impact</div>
+                        
+                        <div class="prediction-comparison">
+                            <div class="pred-box original-pred">
+                                <span class="pred-label">ORIGINAL PREDICTION</span>
+                                <div class="pred-value" id="whatifOriginalPred">--</div>
+                                <div class="pred-prob" id="whatifOriginalProb">--</div>
+                            </div>
+                            <div class="pred-arrow">➔</div>
+                            <div class="pred-box modified-pred">
+                                <span class="pred-label">MODIFIED PREDICTION</span>
+                                <div class="pred-value" id="whatifModifiedPred">--</div>
+                                <div class="pred-prob" id="whatifModifiedProb">--</div>
+                            </div>
                         </div>
+
+                        <div class="whatif-explanation-panel">
+                            <span class="feat-icon">⚡</span>
+                            <div id="whatifExplanationText">Load an instance to begin.</div>
+                        </div>
+
+                        <div class="card-title mt-4">Feature Impact</div>
+                        <p class="card-desc">How modified features shifted the prediction (SHAP Δ).</p>
+                        <div class="chart-wrapper" id="chartWhatIfImpact" style="min-height: 250px;"></div>
                     </div>
                 </div>
             </div>
 
             <!-- DATA INSIGHTS -->
-            <div class="dash-view" id="section-data-insights">
+             <div class="dash-view" id="section-data-insights">
                  <div class="section-heading">
-                    <h2>AI Insights & Data Preview</h2>
-                    <p>Dataset overview and model interpretation powered by Gemini.</p>
+                    <h2>Data Insights</h2>
+                    <p>Dataset overview and detailed statistics.</p>
                 </div>
-                <div class="charts-row">
-                    <div class="dash-card half ai-insight-panel">
-                        <div class="card-title">🤖 AI Model Explanation</div>
-                        <div class="ai-controls">
-                            <input type="password" id="geminiKey" class="text-input" placeholder="Enter Gemini API Key (Optional)">
-                            <button class="btn-outline" id="aiInsightBtn">Generate Interpretations</button>
-                        </div>
-                        <div id="aiInsightResult" class="ai-result mt-4"></div>
+                
+                <div class="dash-card full mt-4">
+                    <div class="card-title">Dataset Preview</div>
+                    <div class="table-container mt-2">
+                         <div id="dataPreviewTable"></div>
                     </div>
-                    <div class="dash-card half">
-                        <div class="card-title">Dataset Preview</div>
-                        <div class="table-container mt-2">
-                             <div id="dataPreviewTable"></div>
-                        </div>
+                </div>
+
+                <div class="dash-card full mt-4">
+                    <div class="card-title">Feature Statistics</div>
+                    <p class="card-desc">Statistical summary of all columns in your dataset.</p>
+                    <div class="table-container mt-2" style="max-height: 500px; overflow-y: auto;">
+                         <div id="dataStatsTable"></div>
                     </div>
                 </div>
             </div>
@@ -332,7 +347,7 @@
         
         <footer class="footer" style="display:none;" id="footer">
             <div class="f-left">XplainAI Studio - Explainable AI Platform</div>
-            <div class="f-right">All analysis runs locally. No data is sent to any server unless using AI Insights.</div>
+            <div class="f-right">All analysis runs locally. No data is sent to any external server.</div>
         </footer>
     </main>
 

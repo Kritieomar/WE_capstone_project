@@ -57,6 +57,39 @@ def prepare_features(df, target_column):
     logging.info(f"Features prepared. X shape: {X.shape}, y shape: {y.shape}")
     return X, y
 
+def extract_model(model):
+    """
+    Extracts the underlying estimator if the model is a scikit-learn Pipeline.
+    """
+    if hasattr(model, 'steps') and isinstance(model.steps, list):
+        return model.steps[-1][1]
+    return model
+
+def extract_feature_names(model, default_names):
+    """
+    Tries to extract actual feature names from a scikit-learn Pipeline, 
+    particularly useful when OneHotEncoders create expanded column arrays.
+    
+    Args:
+        model: Trained model or Pipeline
+        default_names: Fallback feature names from the raw dataset
+    """
+    try:
+        if hasattr(model, 'steps') and isinstance(model.steps, list):
+            # Try to find a ColumnTransformer or similar feature preprocessor
+            preprocessor = model.steps[0][1]
+            if hasattr(preprocessor, 'get_feature_names_out'):
+                names = preprocessor.get_feature_names_out()
+                # Clean up prefixes like 'cat__' or 'num__'
+                cleaned_names = [n.split('__')[-1] if '__' in n else n for n in names]
+                return cleaned_names
+        elif hasattr(model, 'get_feature_names_out'):
+            return model.get_feature_names_out()
+    except Exception as e:
+        logging.warning(f"Could not extract feature names from pipeline: {e}")
+    
+    return default_names
+
 def validate_feature_count(model, X):
     """
     Checks if the number of features the model was trained on matches 
@@ -69,12 +102,17 @@ def validate_feature_count(model, X):
     Raises:
         ValueError: If there is a mismatch in feature count.
     """
-    # Check if the model has 'n_features_in_' attribute (standard in scikit-learn)
-    if not hasattr(model, 'n_features_in_'):
+    core_model = extract_model(model)
+
+    # Check if the core model or pipeline has 'n_features_in_' attribute (standard in scikit-learn)
+    if hasattr(core_model, 'n_features_in_'):
+        expected_features = core_model.n_features_in_
+    elif hasattr(model, 'n_features_in_'):
+        expected_features = model.n_features_in_
+    else:
         logging.warning("The model does not have 'n_features_in_' attribute. Skipping feature count validation.")
         return
         
-    expected_features = model.n_features_in_
     actual_features = X.shape[1]
     
     if expected_features != actual_features:

@@ -619,47 +619,113 @@ body {
     color: var(--text-muted);
 }
 
-/* What-If Form */
-.whatif-container {
-    display: flex;
-    flex-direction: column;
+/* What-If Split Layout */
+.whatif-controls-card {
+    margin-bottom: 16px;
+    padding: 16px 24px;
+}
+.whatif-split-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
     gap: 24px;
 }
-.whatif-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+.whatif-left, .whatif-right {
+    height: 100%;
+}
+.whatif-form-grid {
+    display: flex;
+    flex-direction: column;
     gap: 16px;
-    max-height: 400px;
+    max-height: 600px;
     overflow-y: auto;
     padding-right: 8px;
 }
 .whatif-input-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 .whatif-input-wrapper label {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+}
+.ml-auto {
+    margin-left: auto;
 }
 
-.whatif-action {
+/* Prediction Comparison */
+.prediction-comparison {
     display: flex;
     align-items: center;
-    gap: 24px;
-    border-top: 1px solid var(--bg-card-border);
-    padding-top: 24px;
+    justify-content: space-between;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--bg-card-border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    margin-bottom: 24px;
 }
-.whatif-action button {
-    width: auto;
-    padding: 12px 32px;
+.pred-box {
+    text-align: center;
+    flex: 1;
 }
-.whatif-result {
+.pred-arrow {
     font-size: 24px;
-    font-weight: 700;
-    color: var(--accent-green);
-    font-family: var(--font-head);
+    color: var(--text-muted);
+    padding: 0 20px;
 }
+.pred-label {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 8px;
+}
+.pred-value {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: var(--font-head);
+    margin-bottom: 4px;
+}
+.original-pred .pred-value { color: var(--text-primary); }
+.modified-pred .pred-value { color: var(--accent-green); }
+
+.pred-prob {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Explanation Panel */
+.whatif-explanation-panel {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: rgba(96, 165, 250, 0.05);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+.whatif-explanation-panel .feat-icon {
+    font-size: 24px;
+    margin-bottom: 0;
+}
+.whatif-explanation-panel span.highlight-feat {
+    color: var(--text-primary);
+    font-weight: 600;
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.whatif-explanation-panel span.highlight-dir {
+    font-weight: 600;
+}
+.highlight-up { color: var(--accent-green); }
+.highlight-down { color: var(--accent-red); }
 
 /* AI Insights */
 .ai-insight-panel {

@@ -133,6 +133,7 @@ D.analyzeBtn.addEventListener('click', async () => {
 
         appState = { ...appState, ...data };
         appState.targetCol = targetCol;
+        appState.data_stats = data.data_stats;
         
         // Transition UI
         D.hero.style.display = 'none';
@@ -147,10 +148,10 @@ D.analyzeBtn.addEventListener('click', async () => {
         renderRadarChart();
         renderPieChart();
         renderFeatureImportance();
-        renderShapSummary();
         populatePerformance();
         buildWhatIfInputs();
         buildDataPreview();
+        buildDataStats();
 
         // Initial local SHAP
         document.getElementById('localRowInput').value = 0;
@@ -290,55 +291,6 @@ function renderFeatureImportance() {
     };
     const layout = { ...getPlotLayout(), margin: {l: 120, r: 20, t: 10, b: 40} };
     Plotly.newPlot('chartFeatureImportance', [trace], layout, {responsive: true});
-
-    // Populate the sub grid
-    const grid = document.getElementById('featureImportanceGrid');
-    const total = values.reduce((a,b)=>a+b, 0) || 1;
-    
-    let html = '';
-    entries.slice(0,6).forEach(e => {
-        const perc = ((e[1]/total)*100).toFixed(0);
-        html += `
-            <div class="f-stat-card">
-                <div class="f-stat-perc">${perc}%</div>
-                <div class="f-stat-info">
-                    <h5>${e[0]}</h5>
-                    <p>High relative importance score</p>
-                </div>
-            </div>
-        `;
-    });
-    grid.innerHTML = html;
-}
-
-function renderShapSummary() {
-    const shapData = appState.shap_summary;
-    const fMap = {};
-    shapData.forEach(d => {
-        if(!fMap[d.feature]) fMap[d.feature] = {s:[], f:[]};
-        fMap[d.feature].s.push(d.shap_value);
-        fMap[d.feature].f.push(d.feature_value);
-    });
-
-    const ranked = Object.entries(fMap)
-        .map(([name, d]) => ({ name, mean: d.s.reduce((sum, v)=>sum+Math.abs(v),0)/d.s.length, ...d}))
-        .sort((a,b) => b.mean - a.mean).slice(0, 10).reverse();
-
-    const traces = ranked.map(feat => {
-        const min = Math.min(...feat.f), max = Math.max(...feat.f), range = max - min || 1;
-        const colors = feat.f.map(v => {
-            const r = (v-min)/range;
-            // Blue to Red (0 to 1) -> rgb(96,165,250) to rgb(248,113,113)
-            return `rgb(${96 + r*(248-96)}, ${165 - r*(165-113)}, ${250 - r*(250-113)})`;
-        });
-        return {
-            type: 'scatter', mode: 'markers', x: feat.s, y: feat.s.map(()=>feat.name),
-            marker: { color: colors, size: 6, opacity: 0.8 }, showlegend: false
-        }
-    });
-    
-    const layout = { ...getPlotLayout(), xaxis: { zeroline: true, zerolinecolor: 'rgba(255,255,255,0.2)', title: 'SHAP Value' }, margin: {l:120, r:20, t:10, b:40} };
-    Plotly.newPlot('chartGlobalShap', traces, layout, {responsive:true});
 }
 
 function populatePerformance() {
@@ -374,7 +326,7 @@ function populatePerformance() {
                         <td class="class-name">${cls}</td>
                         <td>${stats.precision.toFixed(2)}</td>
                         <td>${stats.recall.toFixed(2)}</td>
-                        <td>${stats.f1-score ? stats['f1-score'].toFixed(2) : stats.f1_score ? stats.f1_score.toFixed(2) : '0.00'}</td>
+                        <td>${stats['f1-score'] ? stats['f1-score'].toFixed(2) : stats.f1_score ? stats.f1_score.toFixed(2) : '0.00'}</td>
                         <td>${stats.support}</td>
                     </tr>
                 `;
@@ -423,34 +375,153 @@ async function explainLocalRow(idx) {
     } catch(e) {}
 }
 
-// ================== What If ==================
-function buildWhatIfInputs() {
+// ================== What If (Split View) ==================
+
+let whatIfTimeout = null;
+
+document.getElementById('loadWhatIfBtn').addEventListener('click', async () => {
+    const idx = parseInt(document.getElementById('whatifRowInput').value) || 0;
+    try {
+        const resp = await fetch(`${API_BASE}/api/explain/${idx}`);
+        const data = await resp.json();
+        if(data.error) return alert(data.error);
+
+        // Store original state
+        appState.whatIfOriginal = {
+            idx: idx,
+            features: data.feature_values,
+            prediction: data.prediction,
+            probabilities: data.probabilities,
+            contributions: data.contributions
+        };
+
+        // Populate Left Panel (Inputs)
+        buildWhatIfSplitInputs();
+        
+        // Populate Right Panel (Original)
+        updatePredBox('whatifOriginalPred', 'whatifOriginalProb', data.prediction, data.probabilities);
+        updatePredBox('whatifModifiedPred', 'whatifModifiedProb', data.prediction, data.probabilities);
+        
+        // Clear impact chart and explanation
+        document.getElementById('whatifExplanationText').innerHTML = 'Showing baseline instance. Change a feature value to see its impact.';
+        Plotly.purge('chartWhatIfImpact');
+        
+    } catch(e) {
+        alert("Failed to load instance.");
+    }
+});
+
+document.getElementById('resetWhatIfBtn').addEventListener('click', () => {
+    if(!appState.whatIfOriginal) return;
+    buildWhatIfSplitInputs(); // Rebuild from original
+    // Reset Right Panel
+    updatePredBox('whatifModifiedPred', 'whatifModifiedProb', appState.whatIfOriginal.prediction, appState.whatIfOriginal.probabilities);
+    document.getElementById('whatifExplanationText').innerHTML = 'Values reset to original baseline.';
+    Plotly.purge('chartWhatIfImpact');
+});
+
+function buildWhatIfSplitInputs() {
+    if(!appState.whatIfOriginal) return;
     const wrap = document.getElementById('whatifInputs');
-    wrap.innerHTML = appState.featureNames.map(f => `
+    wrap.innerHTML = Object.entries(appState.whatIfOriginal.features).map(([f, val]) => `
         <div class="whatif-input-wrapper">
             <label>${f}</label>
-            <input type="number" step="any" id="wi-${f}" class="num-input" value="0">
+            <input type="number" step="any" id="wi-${f}" class="num-input whatif-trigger" value="${val}">
         </div>
     `).join('');
+
+    // Highlight changed inputs for UX
+    document.querySelectorAll('.num-input').forEach(input => {
+        input.addEventListener('input', () => {
+             input.style.borderColor = 'var(--accent-green)';
+        });
+    });
 }
 
-document.getElementById('whatifBtn').addEventListener('click', async () => {
+document.getElementById('execWhatIfBtn').addEventListener('click', () => {
+    // Reset visual hints
+    document.querySelectorAll('.num-input').forEach(input => input.style.borderColor = '');
+    runWhatIfSimulation();
+});
+
+async function runWhatIfSimulation() {
+    if(!appState.whatIfOriginal) return;
+    
+    // Gather modified features
     const features = {};
-    appState.featureNames.forEach(f => features[f] = parseFloat(document.getElementById(`wi-${f}`).value) || 0);
+    Object.keys(appState.whatIfOriginal.features).forEach(f => {
+        features[f] = parseFloat(document.getElementById(`wi-${f}`).value) || 0;
+    });
+
     try {
         const resp = await fetch(`${API_BASE}/api/whatif`, {
             method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({features})
         });
         const data = await resp.json();
-        const resEl = document.getElementById('whatifResult');
-        resEl.style.display = 'block';
-        if(data.probabilities) {
-            resEl.textContent = `Predicted: ${data.prediction} (Conf: ${(Object.values(data.probabilities).find(v => v > 0.5) * 100 || Math.max(...Object.values(data.probabilities)) * 100).toFixed(1)}%)`;
+        if(data.error) return;
+
+        // Update Right Panel (Modified)
+        updatePredBox('whatifModifiedPred', 'whatifModifiedProb', data.prediction, data.probabilities);
+
+        // Compute SHAP Differences
+        const origContrib = appState.whatIfOriginal.contributions;
+        const modContrib = data.contributions;
+        const diffs = [];
+        let maxDiffFeat = null;
+        let maxAbsDiff = 0;
+
+        Object.keys(origContrib).forEach(f => {
+            const d = (modContrib[f] || 0) - origContrib[f];
+            if (Math.abs(d) > 0.0001) {
+                diffs.push({ feature: f, diff: d });
+            }
+            if (Math.abs(d) > maxAbsDiff) {
+                maxAbsDiff = Math.abs(d);
+                maxDiffFeat = { feature: f, diff: d, oldVal: appState.whatIfOriginal.features[f], newVal: features[f] };
+            }
+        });
+
+        diffs.sort((a,b) => Math.abs(a.diff) - Math.abs(b.diff)); // ascending abs for horizontal bar chart
+        
+        // Plot Impact
+        if(diffs.length > 0) {
+            const trace = {
+                type: 'bar', orientation: 'h',
+                x: diffs.map(d => d.diff),
+                y: diffs.map(d => d.feature),
+                marker: { color: diffs.map(d => d.diff > 0 ? '#34d399' : '#f87171') } // green positive, red negative
+            };
+            Plotly.newPlot('chartWhatIfImpact', [trace], { ...getPlotLayout(), margin: {l: 120, r:20, t:10, b:30} }, {responsive:true});
+            
+            // Build Explanation
+            if(maxDiffFeat) {
+                const dir = maxDiffFeat.diff > 0 ? '<span class="highlight-dir highlight-up">increased</span>' : '<span class="highlight-dir highlight-down">decreased</span>';
+                const origValTxt = typeof maxDiffFeat.oldVal === 'number' ? maxDiffFeat.oldVal.toFixed(3) : maxDiffFeat.oldVal;
+                const newValTxt = typeof maxDiffFeat.newVal === 'number' ? maxDiffFeat.newVal.toFixed(3) : maxDiffFeat.newVal;
+
+                document.getElementById('whatifExplanationText').innerHTML = 
+                    `The prediction ${dir} primarily because <span class="highlight-feat">${maxDiffFeat.feature}</span> was changed from <strong>${origValTxt}</strong> to <strong>${newValTxt}</strong>.`;
+            }
+
         } else {
-            resEl.textContent = `Predicted: ${data.prediction}`;
+            Plotly.purge('chartWhatIfImpact');
+            document.getElementById('whatifExplanationText').innerHTML = 'Modifications did not significantly impact the prediction.';
         }
+
     } catch(e) {}
-});
+}
+
+function updatePredBox(valId, probId, prediction, probabilities) {
+    document.getElementById(valId).textContent = prediction;
+    const pEl = document.getElementById(probId);
+    if(probabilities) {
+        const maxProb = Math.max(...Object.values(probabilities));
+        const conf = (maxProb * 100).toFixed(1);
+        pEl.textContent = `Confidence: ${conf}%`;
+    } else {
+        pEl.textContent = '';
+    }
+}
 
 // ================== Data Preview ==================
 function buildDataPreview() {
@@ -464,22 +535,47 @@ function buildDataPreview() {
     document.getElementById('dataPreviewTable').innerHTML = h;
 }
 
-// ================== AI Insights ==================
-document.getElementById('aiInsightBtn').addEventListener('click', async () => {
-    const res = document.getElementById('aiInsightResult');
-    res.textContent = 'Generating insights...';
-    try {
-        const resp = await fetch(`${API_BASE}/api/ai-insights`, {
-            method:'POST', headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify({feature_importance: appState.feature_importance, api_key: document.getElementById('geminiKey').value})
-        });
-        const data = await resp.json();
-        res.innerHTML = data.explanation
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n\n/g, '<br><br>')
-            .replace(/\n/g, '<br>');
-    } catch(e) { res.textContent = 'Failed to generate insights.'; }
-});
+// ================== Data Statistics ==================
+function buildDataStats() {
+    if(!appState.data_stats || !appState.data_stats.length) return;
+    
+    let h = `
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    <th>Data Type</th>
+                    <th>Missing</th>
+                    <th>Unique</th>
+                    <th>Min</th>
+                    <th>Mean</th>
+                    <th>Max</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    appState.data_stats.forEach(stat => {
+        h += `
+            <tr>
+                <td class="class-name">${stat.column}</td>
+                <td><span class="badge-${stat.dtype.includes('int') || stat.dtype.includes('float') ? 'acc' : 'model'}">${stat.dtype}</span></td>
+                <td style="color: ${stat.missing > 0 ? '#f87171' : 'inherit'}">${stat.missing}</td>
+                <td>${stat.unique}</td>
+                <td>${stat.min}</td>
+                <td>${stat.mean}</td>
+                <td>${stat.max}</td>
+            </tr>
+        `;
+    });
+    
+    h += '</tbody></table>';
+    
+    const container = document.getElementById('dataStatsTable');
+    if (container) {
+        container.innerHTML = h;
+    }
+}
 
 // ================== Helpers ==================
 function getPlotLayout() {

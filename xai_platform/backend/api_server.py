@@ -23,7 +23,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from backend.model_loader import load_model
-from backend.data_handler import load_dataset, prepare_features, validate_feature_count
+from backend.data_handler import load_dataset, prepare_features, validate_feature_count, extract_model, extract_feature_names
 from backend.metrics_engine import evaluate_model
 from backend.explanation_engine import compute_shap_values, get_feature_importance, explain_prediction
 from backend.ai_insight_engine import generate_ai_insights
@@ -124,29 +124,45 @@ def analyze():
         X, y = prepare_features(df, target_col)
         validate_feature_count(model, X)
 
+        feature_names = extract_feature_names(model, X.columns.tolist())
+        core_model = extract_model(model)
+
+        # If it's a pipeline, transform the features first for SHAP
+        if hasattr(model, 'steps'):
+            X_trans_arr = model.steps[0][1].transform(X)
+            # Ensure dense format
+            if hasattr(X_trans_arr, 'toarray'): X_trans_arr = X_trans_arr.toarray()
+            X_transformed = pd.DataFrame(X_trans_arr, columns=feature_names, index=X.index)
+        else:
+            X_transformed = X.copy()
+            X_transformed.columns = feature_names
+
         # Store for later use
-        session_data['X'] = X
+        session_data['X'] = X # Original features for prediction
+        session_data['X_transformed'] = X_transformed # Transformed features for explanation
         session_data['y'] = y
         session_data['target_col'] = target_col
+        session_data['feature_names'] = feature_names
 
-        # Compute metrics
+        # Compute metrics using outer model to ensure pipeline transformations happen normally
         metrics = evaluate_model(model, X, y)
 
-        # Compute SHAP (sample for performance)
-        sample_size = min(500, len(X))
-        X_sample = X.sample(n=sample_size, random_state=42)
-        shap_values, expected_value = compute_shap_values(model, X_sample)
+        # Compute SHAP (sample for performance) using inner model on transformed data
+        sample_size = min(500, len(X_transformed))
+        X_sample_trans = X_transformed.sample(n=sample_size, random_state=42)
+        X_sample_orig = X.loc[X_sample_trans.index]
+        shap_values, expected_value = compute_shap_values(core_model, X_sample_trans)
 
         # Store SHAP values
         session_data['shap_values'] = shap_values
-        session_data['X_sample'] = X_sample
+        session_data['X_sample'] = X_sample_orig # Return original samples to UI
+        session_data['X_sample_trans'] = X_sample_trans
 
         # Feature importance
-        feature_names = X.columns.tolist()
         feature_importance = get_feature_importance(shap_values, feature_names)
 
         # Compute full SHAP for local explanations
-        shap_values_full, _ = compute_shap_values(model, X)
+        shap_values_full, _ = compute_shap_values(core_model, X_transformed)
         session_data['shap_values_full'] = shap_values_full
 
         # SHAP values for beeswarm data (2D slice)
@@ -157,15 +173,37 @@ def analyze():
         else:
             shap_2d = np.array(shap_values)
 
-        # Build SHAP summary data for plotting
+        # Build SHAP summary data for plotting using original raw X data for UI
         shap_summary_data = []
         for i, fname in enumerate(feature_names):
             for j in range(min(200, len(shap_2d))):
                 shap_summary_data.append({
                     'feature': fname,
                     'shap_value': float(shap_2d[j][i]),
-                    'feature_value': float(X_sample.iloc[j, i]) if j < len(X_sample) else 0
+                    'feature_value': float(X_sample_trans.iloc[j, i]) if j < len(X_sample_trans) else 0
                 })
+
+        # Build Data Statistics
+        data_stats = []
+        for col in df.columns:
+            stats = {
+                'column': col, 
+                'dtype': str(df[col].dtype),
+                'missing': int(df[col].isnull().sum()),
+                'unique': int(df[col].nunique())
+            }
+            if pd.api.types.is_numeric_dtype(df[col]):
+                mean_val = df[col].mean()
+                min_val = df[col].min()
+                max_val = df[col].max()
+                stats['mean'] = round(float(mean_val), 3) if not pd.isna(mean_val) else '-'
+                stats['min'] = round(float(min_val), 3) if not pd.isna(min_val) else '-'
+                stats['max'] = round(float(max_val), 3) if not pd.isna(max_val) else '-'
+            else:
+                stats['mean'] = '-'
+                stats['min'] = '-'
+                stats['max'] = '-'
+            data_stats.append(stats)
 
         return jsonify({
             'success': True,
@@ -173,9 +211,10 @@ def analyze():
             'feature_importance': feature_importance,
             'feature_names': feature_names,
             'shap_summary': shap_summary_data,
-            'num_samples': len(X),
-            'num_features': X.shape[1],
-            'model_type': type(model).__name__
+            'data_stats': data_stats,
+            'num_samples': len(X_transformed),
+            'num_features': X_transformed.shape[1],
+            'model_type': type(core_model).__name__
         })
 
     except Exception as e:
@@ -191,12 +230,15 @@ def explain_local(index):
             return jsonify({'error': 'Run analysis first.'}), 400
 
         model = session_data['model']
-        X = session_data['X']
+        core_model = extract_model(model)
+        X = session_data['X'] # original
+        X_transformed = session_data['X_transformed'] # transformed features
         shap_values_full = session_data['shap_values_full']
 
-        contributions = explain_prediction(model, X, shap_values_full, index)
+        # Explain the prediction using transformed features for SHAP alignment
+        contributions = explain_prediction(core_model, X_transformed, shap_values_full, index)
 
-        # Also return the actual feature values and prediction
+        # Return actual un-transformed feature values for the UI to edit
         row_data = X.iloc[index].to_dict()
         prediction = model.predict(X.iloc[[index]])[0]
 
@@ -230,19 +272,43 @@ def whatif_simulation():
         modified_features = data.get('features', {})
 
         model = session_data['model']
+        core_model = extract_model(model)
         X = session_data['X']
+        feature_names = session_data['feature_names']
 
         # Create a single-row DataFrame with modified values
-        feature_names = X.columns.tolist()
-        row = {name: float(modified_features.get(name, 0)) for name in feature_names}
+        # UI returns keys that match raw dataset
+        raw_feature_names = X.columns.tolist()
+        row = {name: float(modified_features.get(name, 0)) for name in raw_feature_names if name in modified_features}
+        # Backfill unchanged string types correctly
+        for name in raw_feature_names:
+             if name not in modified_features:
+                  row[name] = X.iloc[0][name] # Fallback, though UI should pass everything
+             elif isinstance(X.iloc[0][name], str):
+                  # what-if UI passes input fields. For categorical drops, read original or passed
+                  row[name] = modified_features.get(name, X.iloc[0][name])
+
         row_df = pd.DataFrame([row])
 
-        # Predict
+        # Predict using outer pipeline
         prediction = model.predict(row_df)[0]
+
+        # Calculate SHAP values for the modified inputs via inner core model
+        if hasattr(model, 'steps'):
+             row_trans_arr = model.steps[0][1].transform(row_df)
+             if hasattr(row_trans_arr, 'toarray'): row_trans_arr = row_trans_arr.toarray()
+             row_trans_df = pd.DataFrame(row_trans_arr, columns=feature_names)
+        else:
+             row_trans_df = row_df.copy()
+             row_trans_df.columns = feature_names
+
+        shap_values_modified, _ = compute_shap_values(core_model, row_trans_df)
+        contributions = explain_prediction(core_model, row_trans_df, shap_values_modified, 0)
 
         result = {
             'success': True,
-            'prediction': int(prediction) if isinstance(prediction, (np.integer, int)) else float(prediction)
+            'prediction': int(prediction) if isinstance(prediction, (np.integer, int)) else float(prediction),
+            'contributions': contributions
         }
 
         if hasattr(model, 'predict_proba'):
