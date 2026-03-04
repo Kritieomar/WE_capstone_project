@@ -82,6 +82,8 @@ async function checkReadyToUpload() {
             analyzeBtn.disabled = false;
             document.getElementById('rowIndex').max = data.rows - 1;
             appState.columns = data.columns;
+            appState.preview = data.preview;
+            renderDataPreview();
 
             hideLoading();
         } catch (err) {
@@ -121,6 +123,7 @@ async function runAnalysis() {
 
         // Render everything
         renderSummary(data);
+        renderDataPreview();
         renderMetrics(data.metrics);
         renderFeatureImportance(data.feature_importance);
         renderShapSummary(data.shap_summary, data.feature_names);
@@ -151,9 +154,34 @@ function renderSummary(data) {
     container.innerHTML = cards.map(c => `
         <div class="metric-card">
             <div class="metric-label">${c.label}</div>
-            <div class="metric-value ${c.color}">${c.value}</div>
+            <div class="metric-value ${c.color}" title="${c.value}">${c.value}</div>
         </div>
     `).join('');
+}
+
+function renderDataPreview() {
+    const container = document.getElementById('dataPreview');
+    if (!appState.preview || appState.preview.length === 0) {
+        container.innerHTML = '<p class="card-description">No preview data available.</p>';
+        return;
+    }
+
+    const headers = Object.keys(appState.preview[0]);
+    let html = '<table><thead><tr>';
+    headers.forEach(h => html += `<th>${h}</th>`);
+    html += '</tr></thead><tbody>';
+
+    appState.preview.forEach(row => {
+        html += '<tr>';
+        headers.forEach(h => {
+            const val = row[h];
+            html += `<td>${typeof val === 'number' ? val.toFixed(4) : val}</td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
 function renderMetrics(metrics) {

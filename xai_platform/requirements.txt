@@ -1,18 +1,10 @@
 shap
 scikit-learn
-shap
 pandas
 numpy
 streamlit
 matplotlib
 joblib
-<<<<<<< HEAD
 google-generativeai
 flask
 flask-cors
-=======
-fastapi
-uvicorn
-python-multipart
-explainerdashboard
->>>>>>> 7f29cbc1e1f2545912475f976ad96d49f465b44d
