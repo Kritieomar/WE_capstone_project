@@ -3,192 +3,337 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XAI Model Explanation Platform</title>
-    <meta name="description" content="Explainable AI platform with SHAP analysis, what-if simulations, and AI-powered insights.">
+    <title>XplainAI Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Inter:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
+    <!-- Top Navigation -->
+    <header class="top-nav" id="topNav">
+        <div class="nav-left">
             <div class="logo">
-                <span class="logo-icon">⚡</span>
-                <h1>XAI Platform</h1>
+                <div class="logo-box">X</div>
+                <div class="logo-text">XplainAI<br><span>Studio</span></div>
             </div>
-            <p class="tagline">Explainable AI Analysis</p>
+            <nav class="nav-links" id="navLinks" style="display: none;">
+                <a href="#section-overview" class="active">Overview</a>
+                <a href="#section-feature-importance">Feature<br>Importance</a>
+                <a href="#section-shap-analysis">SHAP<br>Analysis</a>
+                <a href="#section-model-performance">Model<br>Performance</a>
+                <a href="#section-predict-explain">Predict &<br>Explain</a>
+                <a href="#section-data-insights">Data<br>Insights</a>
+            </nav>
         </div>
+        <div class="nav-right" id="navBadges" style="display: none;">
+            <span class="nav-badge badge-model" id="badgeModel">Model</span>
+            <span class="nav-badge badge-samples"><span id="badgeSamples">0</span> samples</span>
+            <span class="nav-badge badge-acc">ACC <span id="badgeAcc">0.0%</span></span>
+        </div>
+    </header>
 
-        <div class="sidebar-section">
-            <h3>1. Upload Model</h3>
-            <div class="upload-zone" id="modelDropZone">
-                <input type="file" id="modelFile" accept=".pkl,.joblib" hidden>
-                <span class="upload-icon">📦</span>
-                <p>Drop .pkl or .joblib</p>
-                <span class="file-name" id="modelFileName"></span>
+    <main class="main-content">
+        <!-- Hero & Upload Section (Appears before analysis) -->
+        <section class="hero-section" id="heroSection">
+            <div class="hero-badge">EXPLAINABLE AI PLATFORM</div>
+            <h1 class="hero-title">Understand Your<br>Model,<br>Not Just Its Output</h1>
+            <p class="hero-subtitle">Upload your trained ML model and dataset to get a full breakdown of<br>how and why your model makes predictions.</p>
+
+            <div class="upload-container">
+                <div class="upload-zones">
+                    <div class="upload-zone" id="modelDropZone">
+                        <input type="file" id="modelFile" accept=".pkl,.joblib" hidden>
+                        <div class="upload-icon">🤖</div>
+                        <p>Drop model.pkl or model.joblib</p>
+                        <span class="file-name" id="modelFileName"></span>
+                    </div>
+                    <div class="upload-zone" id="datasetDropZone">
+                        <input type="file" id="datasetFile" accept=".csv" hidden>
+                        <div class="upload-icon">📊</div>
+                        <p>Drop dataset.csv</p>
+                        <span class="file-name" id="datasetFileName"></span>
+                    </div>
+                </div>
+
+                <div class="settings-area" id="settingsSection" style="display:none;">
+                    <label for="targetSelect" class="form-label">TARGET COLUMN NAME</label>
+                    <select id="targetSelect" class="select-input"></select>
+                </div>
+
+                <div class="features-list">
+                    <div class="feature-item"><span>✓</span> Feature Importance</div>
+                    <div class="feature-item"><span>✓</span> SHAP Values</div>
+                    <div class="feature-item"><span>✓</span> Confusion Matrix</div>
+                    <div class="feature-item"><span>✓</span> ROC Curve</div>
+                    <div class="feature-item"><span>✓</span> Prediction Explainer</div>
+                    <div class="feature-item"><span>✓</span> Data Insights</div>
+                </div>
+
+                <button class="btn-primary" id="analyzeBtn" disabled>
+                    <span class="btn-icon">🚀</span> Run Full XAI Analysis
+                </button>
             </div>
-        </div>
 
-        <div class="sidebar-section">
-            <h3>2. Upload Dataset</h3>
-            <div class="upload-zone" id="datasetDropZone">
-                <input type="file" id="datasetFile" accept=".csv" hidden>
-                <span class="upload-icon">📊</span>
-                <p>Drop .csv file</p>
-                <span class="file-name" id="datasetFileName"></span>
-            </div>
-        </div>
-
-        <div class="sidebar-section" id="settingsSection" style="display:none;">
-            <h3>3. Settings</h3>
-            <label for="targetSelect">Target Column</label>
-            <select id="targetSelect" class="select-input"></select>
-
-            <label for="rowIndex">Row Index for Local Explanation</label>
-            <input type="number" id="rowIndex" class="number-input" value="0" min="0">
-        </div>
-
-        <div class="sidebar-section">
-            <h3>AI Insights (Optional)</h3>
-            <input type="password" id="geminiKey" class="text-input" placeholder="Enter Gemini API Key">
-        </div>
-
-        <button class="btn-primary" id="analyzeBtn" disabled>
-            <span class="btn-icon">🔬</span> Run Analysis
-        </button>
-
-        <div class="sidebar-footer">
-            <p>XAI Platform v2.0</p>
-        </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content" id="mainContent">
-        <!-- Hero / Welcome -->
-        <section class="hero" id="heroSection">
-            <div class="hero-content">
-                <h1>Explainable AI<br><span class="gradient-text">Model Analysis Platform</span></h1>
-                <p>Upload your trained ML model and dataset to generate interactive SHAP explanations, what-if simulations, and AI-powered insights.</p>
-                <div class="hero-features">
-                    <div class="hero-feature"><span>📈</span> SHAP Analysis</div>
-                    <div class="hero-feature"><span>🔮</span> What-If Simulations</div>
-                    <div class="hero-feature"><span>🤖</span> AI Insights</div>
-                    <div class="hero-feature"><span>📊</span> Interactive Charts</div>
+            <div class="feature-cards">
+                <div class="feat-card">
+                    <div class="feat-icon">🔓</div>
+                    <h4>Supports Any sklearn Model</h4>
+                    <p>RandomForest, XGBoost, SVM, LogReg, and more</p>
+                </div>
+                <div class="feat-card">
+                    <div class="feat-icon">⚡</div>
+                    <h4>Instant Analysis</h4>
+                    <p>Feature importance, SHAP, performance metrics</p>
+                </div>
+                <div class="feat-card">
+                    <div class="feat-icon">📖</div>
+                    <h4>Plain English</h4>
+                    <p>Every chart explained in simple language</p>
                 </div>
             </div>
         </section>
 
         <!-- Loading Overlay -->
         <div class="loading-overlay" id="loadingOverlay" style="display:none;">
-            <div class="loader">
+            <div class="loader-box">
                 <div class="spinner"></div>
                 <p id="loadingText">Analyzing model...</p>
             </div>
         </div>
 
-        <!-- Dashboard (hidden initially) -->
-        <section class="dashboard" id="dashboard" style="display:none;">
-
-            <!-- Model Summary Cards -->
-            <div class="section-header">
-                <h2>Model Summary</h2>
-            </div>
-            <div class="metrics-grid" id="summaryCards"></div>
-
-            <!-- Dataset Preview -->
-            <div class="card" id="previewCard">
-                <div class="card-header">
-                    <h3>📋 Dataset Preview</h3>
+        <!-- Dashboard Section (Appears after analysis) -->
+        <section class="dashboard-section" id="dashboard" style="display:none;">
+            
+            <!-- OVERVIEW -->
+            <div class="dash-view" id="section-overview">
+                <div class="section-heading">
+                    <h2>Model Overview</h2>
+                    <p>A bird's-eye summary of your model's identity, performance, and dataset.</p>
                 </div>
-                <div class="card-body">
-                    <div class="table-wrapper" id="dataPreview"></div>
+                <div class="insight-banner">
+                    💡 This dashboard analyzed your <strong id="insightModelType">Model</strong> trained on <strong id="insightSamples">0</strong> samples with <strong id="insightFeatures">0</strong> features. The target column '<strong id="insightTarget">column</strong>' is being analyzed. All metrics below are computed based on the provided dataset.
                 </div>
-            </div>
-
-            <!-- Model Metrics -->
-            <div class="section-header">
-                <h2>Model Metrics</h2>
-            </div>
-            <div class="metrics-grid" id="metricsCards"></div>
-
-            <!-- Confusion Matrix -->
-            <div class="card" id="confusionCard" style="display:none;">
-                <div class="card-header">
-                    <h3>🔢 Confusion Matrix</h3>
-                </div>
-                <div class="card-body">
-                    <div id="confusionMatrix"></div>
-                </div>
-            </div>
-
-            <!-- Feature Importance -->
-            <div class="card">
-                <div class="card-header">
-                    <h3>📊 Feature Importance</h3>
-                    <span class="badge">SHAP</span>
-                </div>
-                <div class="card-body">
-                    <div id="featureImportanceChart" class="chart-container"></div>
-                </div>
-            </div>
-
-            <!-- SHAP Summary Plot -->
-            <div class="card">
-                <div class="card-header">
-                    <h3>🎯 SHAP Summary Plot</h3>
-                    <span class="badge">Beeswarm</span>
-                </div>
-                <div class="card-body">
-                    <div id="shapSummaryChart" class="chart-container"></div>
-                </div>
-            </div>
-
-            <!-- Local Explanation -->
-            <div class="card">
-                <div class="card-header">
-                    <h3>🔍 Individual Prediction Explanation</h3>
-                    <div class="inline-controls">
-                        <label>Row:</label>
-                        <input type="number" id="localRowInput" class="number-input-sm" value="0" min="0">
-                        <button class="btn-small" id="explainRowBtn">Explain</button>
+                
+                <div class="metrics-row">
+                    <div class="metric-box">
+                        <div class="m-icon">🌲</div>
+                        <div class="m-label">MODEL TYPE</div>
+                        <div class="m-val" id="valModelAcronym">MOD</div>
+                        <div class="m-sub" id="valModelFull">Model Name</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-icon">🎯</div>
+                        <div class="m-label">ACCURACY</div>
+                        <div class="m-val text-yellow" id="valAccuracy">0.0%</div>
+                        <div class="m-sub">Overall Correctness</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-icon">🔢</div>
+                        <div class="m-label">FEATURES</div>
+                        <div class="m-val text-blue" id="valFeatureCount">0</div>
+                        <div class="m-sub">Input variables</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-icon">📦</div>
+                        <div class="m-label">SAMPLES</div>
+                        <div class="m-val text-purple" id="valTotalSamples">0</div>
+                        <div class="m-sub">Total Datapoints</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-icon">📈</div>
+                        <div class="m-label">AUC-ROC</div>
+                        <div class="m-val text-red" id="valAucRoc">0.000</div>
+                        <div class="m-sub">Discrimination score</div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div id="predictionInfo" class="prediction-info"></div>
-                    <div id="localExplanationChart" class="chart-container"></div>
-                    <div class="table-wrapper" id="localExplanationTable"></div>
+
+                <div class="charts-row">
+                    <div class="dash-card half">
+                        <div class="card-title">Performance Radar</div>
+                        <p class="card-desc">How well your model performs across key metrics.</p>
+                        <div class="chart-wrapper" id="chartRadar"></div>
+                    </div>
+                    <div class="dash-card half">
+                        <div class="card-title">Prediction Outcomes</div>
+                        <p class="card-desc">Breakdown of predictions on dataset.</p>
+                        <div class="chart-wrapper" id="chartPie"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- What-If Simulator -->
-            <div class="card what-if-card">
-                <div class="card-header">
-                    <h3>🔮 What-If Simulator</h3>
-                    <span class="badge badge-purple">Interactive</span>
+            <!-- FEATURE IMPORTANCE -->
+            <div class="dash-view" id="section-feature-importance">
+                <div class="section-heading">
+                    <h2>Feature Importance</h2>
+                    <p>Which features does your model rely on most when making predictions?</p>
                 </div>
-                <div class="card-body">
-                    <p class="card-description">Modify feature values to see how the prediction changes in real-time.</p>
-                    <div class="whatif-grid" id="whatifInputs"></div>
-                    <button class="btn-secondary" id="whatifBtn">Run Simulation</button>
-                    <div id="whatifResult" class="whatif-result" style="display:none;"></div>
+                <div class="insight-banner">
+                    💡 Feature importance tells you HOW MUCH each input variable contributes to the model's decisions on average. A high score means the model relies heavily on that feature.
+                </div>
+
+                <div class="dash-card full">
+                    <div class="chart-wrapper" id="chartFeatureImportance" style="min-height: 400px;"></div>
+                </div>
+                <div class="feature-cards-grid" id="featureImportanceGrid">
+                    <!-- Populated dynamically -->
                 </div>
             </div>
 
-            <!-- AI Insights -->
-            <div class="card ai-card">
-                <div class="card-header">
-                    <h3>🤖 AI Model Explanation</h3>
-                    <span class="badge badge-green">Gemini</span>
+            <!-- SHAP ANALYSIS -->
+            <div class="dash-view" id="section-shap-analysis">
+                <div class="section-heading">
+                    <h2>SHAP Value Analysis</h2>
+                    <p>Why did the model predict what it predicted for a specific sample?</p>
                 </div>
-                <div class="card-body">
-                    <button class="btn-secondary" id="aiInsightBtn">Generate AI Insights</button>
-                    <div id="aiInsightResult" class="ai-result"></div>
+                <div class="insight-banner">
+                    💡 SHAP (SHapley Additive exPlanations) shows the contribution of each feature to pushing the prediction higher (positive, green) or lower (negative, red) from the baseline.
+                </div>
+
+                <div class="dash-card full shap-local-card">
+                    <div class="shap-controls">
+                        <label>Explain Sample Index:</label>
+                        <input type="number" id="localRowInput" class="num-input" value="0" min="0">
+                        <button class="btn-outline" id="explainRowBtn">Explain Sample</button>
+                    </div>
+                    
+                    <div class="prediction-bar">
+                        <div class="pred-left">
+                            <span class="pred-label">SAMPLE #<span id="dispSampleIdx">0</span> PREDICTION</span>
+                            <div class="pred-outcome" id="dispPredOutcome">APPROVED</div>
+                        </div>
+                        <div class="pred-right">
+                            <div class="pred-val-text">Base value: <span id="dispBaseVal">0.00</span></div>
+                            <div class="pred-val-text">Final output: <span id="dispFinalVal">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <div class="chart-wrapper" id="chartLocalShap" style="min-height: 300px;"></div>
+
+                    <div class="shap-summary-text" id="shapExplanationText">
+                        <!-- Populated dynamically via AI or basic logic -->
+                    </div>
+                </div>
+                
+                <div class="dash-card full mt-4">
+                    <div class="card-title">SHAP Summary (Global)</div>
+                    <div class="chart-wrapper" id="chartGlobalShap" style="min-height: 400px;"></div>
+                </div>
+            </div>
+
+            <!-- MODEL PERFORMANCE -->
+            <div class="dash-view" id="section-model-performance">
+                <div class="section-heading">
+                    <h2>Model Performance Metrics</h2>
+                    <p>A deep-dive into classification accuracy, error types, and overall reliability.</p>
+                </div>
+                <div class="insight-banner">
+                    💡 These metrics evaluate the model against the provided dataset. Precision = 'when the model says yes, how often is it right?' Recall = 'of all actual yes cases, how many did the model catch?'
+                </div>
+
+                <div class="metrics-row quad">
+                    <div class="metric-box">
+                        <div class="m-icon">🎯</div>
+                        <div class="m-label">ACCURACY</div>
+                        <div class="m-val text-green" id="perfAccuracy">0.0%</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-icon">🔬</div>
+                        <div class="m-label">PRECISION</div>
+                        <div class="m-val text-blue" id="perfPrecision">0.0%</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-icon">🧲</div>
+                        <div class="m-label">RECALL</div>
+                        <div class="m-val text-yellow" id="perfRecall">0.0%</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-icon">⚖️</div>
+                        <div class="m-label">F1-SCORE</div>
+                        <div class="m-val text-purple" id="perfF1">0.0%</div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="dash-card half">
+                        <div class="card-title">Confusion Matrix Breakdown</div>
+                        <p class="card-desc">A confusion matrix shows 4 outcome types. Ideally TP and TN dominate; FP/FN should be minimal.</p>
+                        <div class="cm-grid" id="cmGridCards">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div class="dash-card half">
+                        <div class="card-title">Per-Class Report</div>
+                        <p class="card-desc">Precision, recall, and F1 broken down by each predicted class.</p>
+                        <div class="table-container">
+                            <table class="report-table" id="classReportTable">
+                                <thead>
+                                    <tr>
+                                        <th>Class</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1</th>
+                                        <th>Support</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PREDICT & EXPLAIN -->
+            <div class="dash-view" id="section-predict-explain">
+                 <div class="section-heading">
+                    <h2>What-If Simulator</h2>
+                    <p>Modify feature values to see how the prediction changes in real-time.</p>
+                </div>
+                <div class="dash-card full">
+                    <div class="whatif-container">
+                        <div class="whatif-form" id="whatifInputs">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <div class="whatif-action">
+                             <button class="btn-primary" id="whatifBtn">Run Simulation</button>
+                             <div class="whatif-result" id="whatifResult" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA INSIGHTS -->
+            <div class="dash-view" id="section-data-insights">
+                 <div class="section-heading">
+                    <h2>AI Insights & Data Preview</h2>
+                    <p>Dataset overview and model interpretation powered by Gemini.</p>
+                </div>
+                <div class="charts-row">
+                    <div class="dash-card half ai-insight-panel">
+                        <div class="card-title">🤖 AI Model Explanation</div>
+                        <div class="ai-controls">
+                            <input type="password" id="geminiKey" class="text-input" placeholder="Enter Gemini API Key (Optional)">
+                            <button class="btn-outline" id="aiInsightBtn">Generate Interpretations</button>
+                        </div>
+                        <div id="aiInsightResult" class="ai-result mt-4"></div>
+                    </div>
+                    <div class="dash-card half">
+                        <div class="card-title">Dataset Preview</div>
+                        <div class="table-container mt-2">
+                             <div id="dataPreviewTable"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
         </section>
+        
+        <footer class="footer" style="display:none;" id="footer">
+            <div class="f-left">XplainAI Studio - Explainable AI Platform</div>
+            <div class="f-right">All analysis runs locally. No data is sent to any server unless using AI Insights.</div>
+        </footer>
     </main>
 
     <script src="app.js"></script>

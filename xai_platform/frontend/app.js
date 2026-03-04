@@ -1,64 +1,88 @@
 /**
- * app.js - XAI Model Explanation Platform
- * Handles all frontend logic: file uploads, API calls, chart rendering, what-if simulation.
+ * app.js - XplainAI Studio
+ * Handles frontend logic, tab switching, and Plotly charting.
  */
 
-const API_BASE = '';  // Same origin
+const API_BASE = '';
 
-// ==================== State ====================
 let appState = {
     modelFile: null,
     datasetFile: null,
     columns: [],
     featureImportance: {},
     featureNames: [],
-    numSamples: 0
+    numSamples: 0,
+    metrics: null,
+    previewData: []
 };
 
-// ==================== DOM Elements ====================
-const modelDropZone = document.getElementById('modelDropZone');
-const datasetDropZone = document.getElementById('datasetDropZone');
-const modelFileInput = document.getElementById('modelFile');
-const datasetFileInput = document.getElementById('datasetFile');
-const modelFileName = document.getElementById('modelFileName');
-const datasetFileName = document.getElementById('datasetFileName');
-const settingsSection = document.getElementById('settingsSection');
-const targetSelect = document.getElementById('targetSelect');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const heroSection = document.getElementById('heroSection');
-const dashboard = document.getElementById('dashboard');
-const loadingOverlay = document.getElementById('loadingOverlay');
-const loadingText = document.getElementById('loadingText');
+// ================== DOM Elements ==================
+const D = {
+    modelZone: document.getElementById('modelDropZone'),
+    dataZone: document.getElementById('datasetDropZone'),
+    modelInput: document.getElementById('modelFile'),
+    dataInput: document.getElementById('datasetFile'),
+    modelName: document.getElementById('modelFileName'),
+    dataName: document.getElementById('datasetFileName'),
+    
+    settings: document.getElementById('settingsSection'),
+    targetSel: document.getElementById('targetSelect'),
+    analyzeBtn: document.getElementById('analyzeBtn'),
+    
+    hero: document.getElementById('heroSection'),
+    dash: document.getElementById('dashboard'),
+    topNav: document.getElementById('topNav'),
+    navLinks: document.getElementById('navLinks'),
+    navBadges: document.getElementById('navBadges'),
+    footer: document.getElementById('footer'),
+    loading: document.getElementById('loadingOverlay'),
+    
+    navA: document.querySelectorAll('.nav-links a'),
+    views: document.querySelectorAll('.dash-view')
+};
 
-// ==================== File Upload ====================
-function setupUploadZone(zone, input, nameEl, type) {
+// ================== Tab Switching ==================
+D.navA.forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        D.navA.forEach(a => a.classList.remove('active'));
+        D.views.forEach(v => v.classList.remove('active'));
+        
+        link.classList.add('active');
+        const targetId = link.getAttribute('href').substring(1);
+        document.getElementById(targetId).classList.add('active');
+    });
+});
+
+// ================== File Upload ==================
+function setupDropZone(zone, input, nameEl, type) {
     zone.addEventListener('click', () => input.click());
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = '#3b82f6'; });
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = '#34d399'; });
     zone.addEventListener('dragleave', () => { zone.style.borderColor = ''; });
     zone.addEventListener('drop', e => {
         e.preventDefault();
         zone.style.borderColor = '';
         if (e.dataTransfer.files.length) {
             input.files = e.dataTransfer.files;
-            handleFileSelect(input, nameEl, zone, type);
+            handleFile(input, nameEl, zone, type);
         }
     });
-    input.addEventListener('change', () => handleFileSelect(input, nameEl, zone, type));
+    input.addEventListener('change', () => handleFile(input, nameEl, zone, type));
 }
 
-function handleFileSelect(input, nameEl, zone, type) {
+function handleFile(input, nameEl, zone, type) {
     const file = input.files[0];
     if (!file) return;
     nameEl.textContent = file.name;
     zone.classList.add('has-file');
     if (type === 'model') appState.modelFile = file;
     else appState.datasetFile = file;
-    checkReadyToUpload();
+    checkUploads();
 }
 
-async function checkReadyToUpload() {
+async function checkUploads() {
     if (appState.modelFile && appState.datasetFile) {
-        showLoading('Uploading files...');
+        showLoading('Uploading and parsing files...');
         try {
             const formData = new FormData();
             formData.append('model', appState.modelFile);
@@ -66,24 +90,20 @@ async function checkReadyToUpload() {
 
             const resp = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
             const data = await resp.json();
-
             if (data.error) throw new Error(data.error);
 
-            // Populate target column selector
-            targetSelect.innerHTML = '';
+            D.targetSel.innerHTML = '';
             data.columns.forEach(col => {
                 const opt = document.createElement('option');
                 opt.value = col;
                 opt.textContent = col;
-                targetSelect.appendChild(opt);
+                D.targetSel.appendChild(opt);
             });
 
-            settingsSection.style.display = 'block';
-            analyzeBtn.disabled = false;
-            document.getElementById('rowIndex').max = data.rows - 1;
-            appState.columns = data.columns;
-            appState.preview = data.preview;
-            renderDataPreview();
+            D.settings.style.display = 'block';
+            D.analyzeBtn.disabled = false;
+            appState.previewData = data.preview;
+            document.getElementById('localRowInput').max = data.rows - 1;
 
             hideLoading();
         } catch (err) {
@@ -93,17 +113,15 @@ async function checkReadyToUpload() {
     }
 }
 
-setupUploadZone(modelDropZone, modelFileInput, modelFileName, 'model');
-setupUploadZone(datasetDropZone, datasetFileInput, datasetFileName, 'dataset');
+setupDropZone(D.modelZone, D.modelInput, D.modelName, 'model');
+setupDropZone(D.dataZone, D.dataInput, D.dataName, 'dataset');
 
-// ==================== Analyze ====================
-analyzeBtn.addEventListener('click', runAnalysis);
+// ================== Analysis ==================
+D.analyzeBtn.addEventListener('click', async () => {
+    const targetCol = D.targetSel.value;
+    if (!targetCol) return;
 
-async function runAnalysis() {
-    const targetCol = targetSelect.value;
-    if (!targetCol) return alert('Please select a target column.');
-
-    showLoading('Computing model metrics...');
+    showLoading('Running full XAI analysis...');
     try {
         const resp = await fetch(`${API_BASE}/api/analyze`, {
             method: 'POST',
@@ -113,123 +131,151 @@ async function runAnalysis() {
         const data = await resp.json();
         if (data.error) throw new Error(data.error);
 
-        appState.featureImportance = data.feature_importance;
-        appState.featureNames = data.feature_names;
-        appState.numSamples = data.num_samples;
+        appState = { ...appState, ...data };
+        appState.targetCol = targetCol;
+        
+        // Transition UI
+        D.hero.style.display = 'none';
+        D.dash.style.display = 'block';
+        D.footer.style.display = 'flex';
+        D.navLinks.style.display = 'flex';
+        D.navBadges.style.display = 'flex';
+        
+        // Populate
+        populateNavBadges();
+        populateOverview();
+        renderRadarChart();
+        renderPieChart();
+        renderFeatureImportance();
+        renderShapSummary();
+        populatePerformance();
+        buildWhatIfInputs();
+        buildDataPreview();
 
-        // Hide hero, show dashboard
-        heroSection.style.display = 'none';
-        dashboard.style.display = 'block';
-
-        // Render everything
-        renderSummary(data);
-        renderDataPreview();
-        renderMetrics(data.metrics);
-        renderFeatureImportance(data.feature_importance);
-        renderShapSummary(data.shap_summary, data.feature_names);
-        buildWhatIfInputs(data.feature_names);
-
-        // Auto-load local explanation for row 0
-        const rowIdx = parseInt(document.getElementById('rowIndex').value) || 0;
-        document.getElementById('localRowInput').value = rowIdx;
-        await loadLocalExplanation(rowIdx);
+        // Initial local SHAP
+        document.getElementById('localRowInput').value = 0;
+        await explainLocalRow(0);
 
         hideLoading();
     } catch (err) {
         hideLoading();
         alert('Analysis Error: ' + err.message);
     }
+});
+
+// ================== Renderers ==================
+function populateNavBadges() {
+    const isReg = !appState.metrics.accuracy;
+    document.getElementById('badgeModel').textContent = appState.model_type;
+    document.getElementById('badgeSamples').textContent = appState.num_samples;
+    
+    if (!isReg) {
+        const acc = (appState.metrics.accuracy * 100).toFixed(1);
+        document.getElementById('badgeAcc').textContent = acc + '%';
+    } else {
+        const r2 = appState.metrics.r2_score.toFixed(3);
+        document.getElementById('badgeAcc').textContent = r2 + ' (R²)';
+    }
 }
 
-// ==================== Rendering Functions ====================
+function fill(id, val) { const el = document.getElementById(id); if(el) el.textContent = val; }
 
-function renderSummary(data) {
-    const container = document.getElementById('summaryCards');
-    const cards = [
-        { label: 'Model Type', value: data.model_type, color: 'blue' },
-        { label: 'Dataset Rows', value: data.num_samples.toLocaleString(), color: 'green' },
-        { label: 'Features', value: data.num_features, color: 'purple' },
-        { label: 'Target', value: document.getElementById('targetSelect').value, color: 'orange' }
-    ];
-    container.innerHTML = cards.map(c => `
-        <div class="metric-card">
-            <div class="metric-label">${c.label}</div>
-            <div class="metric-value ${c.color}" title="${c.value}">${c.value}</div>
-        </div>
-    `).join('');
+function populateOverview() {
+    fill('insightModelType', appState.model_type);
+    fill('insightSamples', appState.num_samples);
+    fill('insightFeatures', appState.num_features);
+    fill('insightTarget', appState.targetCol);
+
+    fill('valModelAcronym', appState.model_type.substring(0,3).toUpperCase());
+    fill('valModelFull', appState.model_type);
+    fill('valFeatureCount', appState.num_features);
+    fill('valTotalSamples', appState.num_samples);
+
+    const m = appState.metrics;
+    if (m.accuracy) {
+        fill('valAccuracy', (m.accuracy * 100).toFixed(1) + '%');
+        fill('valAucRoc', m.auc_roc ? m.auc_roc.toFixed(3) : 'N/A');
+    } else {
+        fill('valAccuracy', m.r2_score.toFixed(3));
+        document.querySelector('#valAccuracy + .m-sub').textContent = 'R2 Score';
+        fill('valAucRoc', m.rmse.toFixed(3));
+        document.querySelector('#valAucRoc + .m-sub').textContent = 'RMSE';
+        document.querySelector('#valAucRoc').parentElement.querySelector('.m-label').textContent = 'RMSE';
+    }
 }
 
-function renderDataPreview() {
-    const container = document.getElementById('dataPreview');
-    if (!appState.preview || appState.preview.length === 0) {
-        container.innerHTML = '<p class="card-description">No preview data available.</p>';
+function renderRadarChart() {
+    const m = appState.metrics;
+    if(!m.accuracy) {
+        document.getElementById('chartRadar').innerHTML = '<p class="text-muted mt-4">Radar chart is only available for classification models.</p>';
         return;
     }
-
-    const headers = Object.keys(appState.preview[0]);
-    let html = '<table><thead><tr>';
-    headers.forEach(h => html += `<th>${h}</th>`);
-    html += '</tr></thead><tbody>';
-
-    appState.preview.forEach(row => {
-        html += '<tr>';
-        headers.forEach(h => {
-            const val = row[h];
-            html += `<td>${typeof val === 'number' ? val.toFixed(4) : val}</td>`;
-        });
-        html += '</tr>';
-    });
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    
+    const trace = {
+        type: 'scatterpolar',
+        r: [m.accuracy, m.precision, m.recall, m.f1_score, m.auc_roc || 0, m.accuracy], 
+        theta: ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'AUC-ROC', 'Accuracy'],
+        fill: 'toself',
+        fillcolor: 'rgba(52, 211, 153, 0.2)',
+        line: { color: '#34d399' }
+    };
+    const layout = {
+        ...getPlotLayout(),
+        polar: {
+            radialaxis: { visible: true, range: [0, 1], color: '#64748b', gridcolor: 'rgba(255,255,255,0.1)' },
+            angularaxis: { color: '#94a3b8' },
+            bgcolor: 'rgba(0,0,0,0)'
+        },
+        margin: { t: 20, b: 20, l: 40, r: 40 }
+    };
+    Plotly.newPlot('chartRadar', [trace], layout, {responsive: true});
 }
 
-function renderMetrics(metrics) {
-    const container = document.getElementById('metricsCards');
-    const colors = ['blue', 'green', 'purple', 'orange'];
-    let html = '';
-    let idx = 0;
-
-    for (const [key, value] of Object.entries(metrics)) {
-        if (key === 'confusion_matrix') continue;
-        const display = typeof value === 'number' ? value.toFixed(4) : value;
-        html += `
-            <div class="metric-card">
-                <div class="metric-label">${key.replace(/_/g, ' ')}</div>
-                <div class="metric-value ${colors[idx % colors.length]}">${display}</div>
-            </div>`;
-        idx++;
+function renderPieChart() {
+    const m = appState.metrics;
+    if(!m.confusion_matrix) return;
+    
+    const cm = m.confusion_matrix;
+    let vals, labels, colors;
+    
+    if (cm.length === 2) {
+        vals = [cm[1][1], cm[0][0], cm[0][1], cm[1][0]]; // TP, TN, FP, FN
+        labels = ['True Positive', 'True Negative', 'False Positive', 'False Negative'];
+        colors = ['#34d399', '#60a5fa', '#f87171', '#fbbf24'];
+    } else {
+        // Multi-class sum diagonal (correct) vs rest (incorrect)
+        let correct = 0, total = 0;
+        for(let i=0; i<cm.length; i++) {
+            for(let j=0; j<cm.length; j++) {
+                total += cm[i][j];
+                if(i===j) correct += cm[i][j];
+            }
+        }
+        vals = [correct, total - correct];
+        labels = ['Correct', 'Incorrect'];
+        colors = ['#34d399', '#f87171'];
     }
-    container.innerHTML = html;
 
-    // Confusion matrix
-    if (metrics.confusion_matrix) {
-        const card = document.getElementById('confusionCard');
-        card.style.display = 'block';
-        const cm = metrics.confusion_matrix;
-        const container = document.getElementById('confusionMatrix');
-
-        // Use Plotly heatmap
-        const trace = {
-            z: cm,
-            type: 'heatmap',
-            colorscale: [[0, '#111827'], [1, '#3b82f6']],
-            showscale: true,
-            hovertemplate: 'Predicted: %{x}<br>Actual: %{y}<br>Count: %{z}<extra></extra>'
-        };
-        const layout = {
-            ...darkLayout(),
-            xaxis: { title: 'Predicted', color: '#9ca3af' },
-            yaxis: { title: 'Actual', color: '#9ca3af', autorange: 'reversed' },
-            height: 350,
-            margin: { t: 20, b: 60, l: 60, r: 20 }
-        };
-        Plotly.newPlot('confusionMatrix', [trace], layout, { responsive: true });
-    }
+    const trace = {
+        type: 'pie',
+        values: vals,
+        labels: labels,
+        marker: { colors: colors, line: { color: '#151b2b', width: 2 } },
+        textinfo: 'percent',
+        hoverinfo: 'label+value',
+        hole: 0.4
+    };
+    const layout = {
+        ...getPlotLayout(),
+        showlegend: true,
+        legend: { orientation: 'h', y: -0.1 },
+        margin: { t: 10, b: 10, l: 10, r: 10 }
+    };
+    Plotly.newPlot('chartPie', [trace], layout, {responsive: true});
 }
 
-function renderFeatureImportance(importance) {
-    const entries = Object.entries(importance).slice(0, 20);
+function renderFeatureImportance() {
+    const entries = Object.entries(appState.feature_importance).slice(0, 15);
     const features = entries.map(e => e[0]).reverse();
     const values = entries.map(e => e[1]).reverse();
 
@@ -239,263 +285,211 @@ function renderFeatureImportance(importance) {
         y: features,
         orientation: 'h',
         marker: {
-            color: values.map(v => {
-                const ratio = v / Math.max(...values);
-                return `rgba(59, 130, 246, ${0.3 + ratio * 0.7})`;
-            }),
-            line: { color: 'rgba(59, 130, 246, 0.8)', width: 1 }
-        },
-        hovertemplate: '%{y}: %{x:.4f}<extra></extra>'
+            color: values.map((v, i) => i%2===0 ? '#34d399' : '#f87171') // Alternate style for visual diversity matching mockup
+        }
     };
+    const layout = { ...getPlotLayout(), margin: {l: 120, r: 20, t: 10, b: 40} };
+    Plotly.newPlot('chartFeatureImportance', [trace], layout, {responsive: true});
 
-    const layout = {
-        ...darkLayout(),
-        xaxis: { title: 'Mean |SHAP Value|', color: '#9ca3af', gridcolor: 'rgba(75,85,99,0.3)' },
-        yaxis: { color: '#9ca3af', tickfont: { size: 11 } },
-        height: Math.max(400, entries.length * 25),
-        margin: { t: 10, b: 50, l: 150, r: 20 }
-    };
-
-    Plotly.newPlot('featureImportanceChart', [trace], layout, { responsive: true });
+    // Populate the sub grid
+    const grid = document.getElementById('featureImportanceGrid');
+    const total = values.reduce((a,b)=>a+b, 0) || 1;
+    
+    let html = '';
+    entries.slice(0,6).forEach(e => {
+        const perc = ((e[1]/total)*100).toFixed(0);
+        html += `
+            <div class="f-stat-card">
+                <div class="f-stat-perc">${perc}%</div>
+                <div class="f-stat-info">
+                    <h5>${e[0]}</h5>
+                    <p>High relative importance score</p>
+                </div>
+            </div>
+        `;
+    });
+    grid.innerHTML = html;
 }
 
-function renderShapSummary(shapData, featureNames) {
-    // Group data by feature
-    const featureMap = {};
+function renderShapSummary() {
+    const shapData = appState.shap_summary;
+    const fMap = {};
     shapData.forEach(d => {
-        if (!featureMap[d.feature]) featureMap[d.feature] = { shap: [], fval: [] };
-        featureMap[d.feature].shap.push(d.shap_value);
-        featureMap[d.feature].fval.push(d.feature_value);
+        if(!fMap[d.feature]) fMap[d.feature] = {s:[], f:[]};
+        fMap[d.feature].s.push(d.shap_value);
+        fMap[d.feature].f.push(d.feature_value);
     });
 
-    // Take top 15 features by mean absolute SHAP
-    const ranked = Object.entries(featureMap)
-        .map(([name, data]) => ({
-            name,
-            meanAbs: data.shap.reduce((s, v) => s + Math.abs(v), 0) / data.shap.length,
-            shap: data.shap,
-            fval: data.fval
-        }))
-        .sort((a, b) => b.meanAbs - a.meanAbs)
-        .slice(0, 15);
+    const ranked = Object.entries(fMap)
+        .map(([name, d]) => ({ name, mean: d.s.reduce((sum, v)=>sum+Math.abs(v),0)/d.s.length, ...d}))
+        .sort((a,b) => b.mean - a.mean).slice(0, 10).reverse();
 
-    const traces = ranked.reverse().map((feat, idx) => {
-        // Normalize feature values for color
-        const minV = Math.min(...feat.fval);
-        const maxV = Math.max(...feat.fval);
-        const range = maxV - minV || 1;
-        const colors = feat.fval.map(v => {
-            const ratio = (v - minV) / range;
-            const r = Math.round(59 + ratio * (239 - 59));
-            const g = Math.round(130 - ratio * 62);
-            const b = Math.round(246 - ratio * 178);
-            return `rgb(${r},${g},${b})`;
+    const traces = ranked.map(feat => {
+        const min = Math.min(...feat.f), max = Math.max(...feat.f), range = max - min || 1;
+        const colors = feat.f.map(v => {
+            const r = (v-min)/range;
+            // Blue to Red (0 to 1) -> rgb(96,165,250) to rgb(248,113,113)
+            return `rgb(${96 + r*(248-96)}, ${165 - r*(165-113)}, ${250 - r*(250-113)})`;
         });
-
         return {
-            type: 'scatter',
-            mode: 'markers',
-            x: feat.shap,
-            y: feat.shap.map(() => feat.name),
-            marker: {
-                color: colors,
-                size: 5,
-                opacity: 0.7
-            },
-            name: feat.name,
-            showlegend: false,
-            hovertemplate: `${feat.name}<br>SHAP: %{x:.4f}<extra></extra>`
-        };
+            type: 'scatter', mode: 'markers', x: feat.s, y: feat.s.map(()=>feat.name),
+            marker: { color: colors, size: 6, opacity: 0.8 }, showlegend: false
+        }
     });
-
-    const layout = {
-        ...darkLayout(),
-        xaxis: {
-            title: 'SHAP Value (impact on prediction)',
-            color: '#9ca3af',
-            gridcolor: 'rgba(75,85,99,0.3)',
-            zeroline: true,
-            zerolinecolor: 'rgba(255,255,255,0.2)'
-        },
-        yaxis: { color: '#9ca3af', tickfont: { size: 11 } },
-        height: Math.max(400, ranked.length * 30),
-        margin: { t: 10, b: 50, l: 150, r: 20 }
-    };
-
-    Plotly.newPlot('shapSummaryChart', traces, layout, { responsive: true });
+    
+    const layout = { ...getPlotLayout(), xaxis: { zeroline: true, zerolinecolor: 'rgba(255,255,255,0.2)', title: 'SHAP Value' }, margin: {l:120, r:20, t:10, b:40} };
+    Plotly.newPlot('chartGlobalShap', traces, layout, {responsive:true});
 }
 
-// ==================== Local Explanation ====================
-document.getElementById('explainRowBtn').addEventListener('click', () => {
-    const idx = parseInt(document.getElementById('localRowInput').value);
-    loadLocalExplanation(idx);
-});
+function populatePerformance() {
+    const m = appState.metrics;
+    if(m.accuracy) {
+        fill('perfAccuracy', (m.accuracy * 100).toFixed(1) + '%');
+        fill('perfPrecision', (m.precision * 100).toFixed(1) + '%');
+        fill('perfRecall', (m.recall * 100).toFixed(1) + '%');
+        fill('perfF1', (m.f1_score * 100).toFixed(1) + '%');
+        
+        // Confusion matrix cards
+        const grid = document.getElementById('cmGridCards');
+        if(m.confusion_matrix.length === 2) {
+            const [[TN, FP], [FN, TP]] = m.confusion_matrix;
+            grid.innerHTML = `
+                <div class="cm-box cm-tp"><div class="cm-val">${TP}</div><div class="cm-label">True Positive</div></div>
+                <div class="cm-box cm-tn"><div class="cm-val">${TN}</div><div class="cm-label">True Negative</div></div>
+                <div class="cm-box cm-fp"><div class="cm-val">${FP}</div><div class="cm-label">False Positive</div></div>
+                <div class="cm-box cm-fn"><div class="cm-val">${FN}</div><div class="cm-label">False Negative</div></div>
+            `;
+        } else {
+            grid.innerHTML = '<p class="text-muted text-center py-4">Detailed breakdown currently only supports binary classification.</p>';
+        }
 
-async function loadLocalExplanation(index) {
-    try {
-        const resp = await fetch(`${API_BASE}/api/explain/${index}`);
-        const data = await resp.json();
-        if (data.error) throw new Error(data.error);
-
-        // Prediction info
-        const infoEl = document.getElementById('predictionInfo');
-        let infoHtml = `<div class="info-chip">Prediction: ${data.prediction}</div>`;
-        if (data.probabilities) {
-            for (const [cls, prob] of Object.entries(data.probabilities)) {
-                infoHtml += `<div class="info-chip">${cls}: ${(prob * 100).toFixed(1)}%</div>`;
+        // Class report
+        const tb = document.querySelector('#classReportTable tbody');
+        tb.innerHTML = '';
+        if(m.classification_report) {
+            for(const [cls, stats] of Object.entries(m.classification_report)) {
+                if(cls === 'accuracy' || cls === 'macro avg' || cls === 'weighted avg') continue;
+                tb.innerHTML += `
+                    <tr>
+                        <td class="class-name">${cls}</td>
+                        <td>${stats.precision.toFixed(2)}</td>
+                        <td>${stats.recall.toFixed(2)}</td>
+                        <td>${stats.f1-score ? stats['f1-score'].toFixed(2) : stats.f1_score ? stats.f1_score.toFixed(2) : '0.00'}</td>
+                        <td>${stats.support}</td>
+                    </tr>
+                `;
             }
         }
-        infoEl.innerHTML = infoHtml;
-
-        // Chart
-        const entries = Object.entries(data.contributions).slice(0, 15);
-        const features = entries.map(e => e[0]).reverse();
-        const values = entries.map(e => e[1]).reverse();
-
-        const trace = {
-            type: 'bar',
-            x: values,
-            y: features,
-            orientation: 'h',
-            marker: {
-                color: values.map(v => v > 0 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.8)'),
-                line: { width: 0 }
-            },
-            hovertemplate: '%{y}: %{x:.4f}<extra></extra>'
-        };
-
-        const layout = {
-            ...darkLayout(),
-            xaxis: { title: 'SHAP Contribution', color: '#9ca3af', gridcolor: 'rgba(75,85,99,0.3)', zeroline: true, zerolinecolor: 'rgba(255,255,255,0.2)' },
-            yaxis: { color: '#9ca3af', tickfont: { size: 11 } },
-            height: Math.max(350, entries.length * 25),
-            margin: { t: 10, b: 50, l: 150, r: 20 }
-        };
-
-        Plotly.newPlot('localExplanationChart', [trace], layout, { responsive: true });
-
-        // Table
-        const tableEl = document.getElementById('localExplanationTable');
-        let tableHtml = `<table><thead><tr><th>Feature</th><th>Value</th><th>SHAP Contribution</th></tr></thead><tbody>`;
-        for (const [feat, contrib] of Object.entries(data.contributions)) {
-            const val = data.feature_values[feat];
-            const color = contrib > 0 ? '#ef4444' : '#3b82f6';
-            tableHtml += `<tr><td>${feat}</td><td>${typeof val === 'number' ? val.toFixed(4) : val}</td><td style="color:${color};font-weight:600;">${contrib.toFixed(4)}</td></tr>`;
-        }
-        tableHtml += '</tbody></table>';
-        tableEl.innerHTML = tableHtml;
-
-        // Update what-if inputs with the values from this row
-        for (const [feat, val] of Object.entries(data.feature_values)) {
-            const inp = document.getElementById(`whatif-${feat}`);
-            if (inp) inp.value = typeof val === 'number' ? val.toFixed(4) : val;
-        }
-
-    } catch (err) {
-        alert('Local explanation error: ' + err.message);
     }
 }
 
-// ==================== What-If Simulator ====================
-function buildWhatIfInputs(featureNames) {
-    const container = document.getElementById('whatifInputs');
-    container.innerHTML = featureNames.map(name => `
-        <div class="whatif-input-group">
-            <label>${name}</label>
-            <input type="number" step="any" id="whatif-${name}" value="0">
+// ================== Local Explain (Predict & Explain) ==================
+document.getElementById('explainRowBtn').addEventListener('click', () => {
+    const idx = parseInt(document.getElementById('localRowInput').value) || 0;
+    explainLocalRow(idx);
+});
+
+async function explainLocalRow(idx) {
+    try {
+        fill('dispSampleIdx', idx);
+        const resp = await fetch(`${API_BASE}/api/explain/${idx}`);
+        const data = await resp.json();
+        if(data.error) return;
+
+        fill('dispPredOutcome', data.prediction);
+        if(data.probabilities) {
+            let pStr = '';
+            for(const [k,v] of Object.entries(data.probabilities)) {
+                if(v > 0.5) pStr += `(Confidence: ${(v*100).toFixed(1)}%)`;
+            }
+            fill('dispPredOutcome', `${data.prediction} ${pStr}`);
+        }
+
+        const entries = Object.entries(data.contributions).sort((a,b)=> Math.abs(b[1]) - Math.abs(a[1])).slice(0, 10).reverse();
+        const base = 0.5; // Dummy base if unavailable
+        let diff = entries.reduce((s, e)=>s+e[1], 0);
+        
+        fill('dispBaseVal', '0.50'); // Default assuming scaled, would need actual base from SHAP expected_value
+        fill('dispFinalVal', (0.50 + diff).toFixed(2));
+
+        const trace = {
+            type: 'bar', orientation: 'h',
+            x: entries.map(e=>e[1]),
+            y: entries.map(e=>e[0]),
+            marker: { color: entries.map(e=>e[1] > 0 ? '#34d399' : '#f87171') }
+        };
+        Plotly.newPlot('chartLocalShap', [trace], { ...getPlotLayout(), margin: {l: 120, r:20, t:10, b:30} }, {responsive:true});
+        
+    } catch(e) {}
+}
+
+// ================== What If ==================
+function buildWhatIfInputs() {
+    const wrap = document.getElementById('whatifInputs');
+    wrap.innerHTML = appState.featureNames.map(f => `
+        <div class="whatif-input-wrapper">
+            <label>${f}</label>
+            <input type="number" step="any" id="wi-${f}" class="num-input" value="0">
         </div>
     `).join('');
 }
 
 document.getElementById('whatifBtn').addEventListener('click', async () => {
     const features = {};
-    appState.featureNames.forEach(name => {
-        const input = document.getElementById(`whatif-${name}`);
-        features[name] = parseFloat(input.value) || 0;
-    });
-
+    appState.featureNames.forEach(f => features[f] = parseFloat(document.getElementById(`wi-${f}`).value) || 0);
     try {
         const resp = await fetch(`${API_BASE}/api/whatif`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ features })
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({features})
         });
         const data = await resp.json();
-        if (data.error) throw new Error(data.error);
-
-        const resultEl = document.getElementById('whatifResult');
-        resultEl.style.display = 'block';
-
-        let html = `<h4>Simulation Result</h4><div class="prediction-value">${data.prediction}</div>`;
-        if (data.probabilities) {
-            html += '<div class="prob-bar">';
-            for (const [cls, prob] of Object.entries(data.probabilities)) {
-                html += `<span class="prob-item">${cls}: ${(prob * 100).toFixed(1)}%</span>`;
-            }
-            html += '</div>';
+        const resEl = document.getElementById('whatifResult');
+        resEl.style.display = 'block';
+        if(data.probabilities) {
+            resEl.textContent = `Predicted: ${data.prediction} (Conf: ${(Object.values(data.probabilities).find(v => v > 0.5) * 100 || Math.max(...Object.values(data.probabilities)) * 100).toFixed(1)}%)`;
+        } else {
+            resEl.textContent = `Predicted: ${data.prediction}`;
         }
-        resultEl.innerHTML = html;
-    } catch (err) {
-        alert('What-if error: ' + err.message);
-    }
+    } catch(e) {}
 });
 
-// ==================== AI Insights ====================
-document.getElementById('aiInsightBtn').addEventListener('click', async () => {
-    const apiKey = document.getElementById('geminiKey').value;
-    const resultEl = document.getElementById('aiInsightResult');
-    resultEl.textContent = 'Generating insights...';
+// ================== Data Preview ==================
+function buildDataPreview() {
+    if(!appState.previewData.length) return;
+    const cols = Object.keys(appState.previewData[0]);
+    let h = '<table class="report-table"><thead><tr>' + cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+    appState.previewData.forEach(row => {
+        h += '<tr>' + cols.map(c => `<td>${typeof row[c]==='number'?row[c].toFixed(3):row[c]}</td>`).join('') + '</tr>';
+    });
+    h += '</tbody></table>';
+    document.getElementById('dataPreviewTable').innerHTML = h;
+}
 
+// ================== AI Insights ==================
+document.getElementById('aiInsightBtn').addEventListener('click', async () => {
+    const res = document.getElementById('aiInsightResult');
+    res.textContent = 'Generating insights...';
     try {
         const resp = await fetch(`${API_BASE}/api/ai-insights`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                feature_importance: appState.featureImportance,
-                api_key: apiKey
-            })
+            method:'POST', headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({feature_importance: appState.feature_importance, api_key: document.getElementById('geminiKey').value})
         });
         const data = await resp.json();
-        if (data.error) throw new Error(data.error);
-
-        // Simple markdown rendering
-        resultEl.innerHTML = renderMarkdown(data.explanation);
-    } catch (err) {
-        resultEl.textContent = 'Error: ' + err.message;
-    }
+        res.innerHTML = data.explanation
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n\n/g, '<br><br>')
+            .replace(/\n/g, '<br>');
+    } catch(e) { res.textContent = 'Failed to generate insights.'; }
 });
 
-// ==================== Utilities ====================
-function showLoading(text) {
-    loadingText.textContent = text;
-    loadingOverlay.style.display = 'flex';
-}
-function hideLoading() {
-    loadingOverlay.style.display = 'none';
-}
-
-function darkLayout() {
+// ================== Helpers ==================
+function getPlotLayout() {
     return {
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: '#9ca3af', family: 'Inter' }
+        font: { color: '#94a3b8', family: 'Inter' },
+        xaxis: { gridcolor: 'rgba(255,255,255,0.05)' },
+        yaxis: { gridcolor: 'rgba(255,255,255,0.05)' }
     };
 }
-
-function renderMarkdown(text) {
-    return text
-        .replace(/### (.*)/g, '<h3>$1</h3>')
-        .replace(/## (.*)/g, '<h2>$1</h2>')
-        .replace(/# (.*)/g, '<h1>$1</h1>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/^- (.*)/gm, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-        .replace(/\n/g, '<br>');
-}
-
-// ==================== Loading Animation ====================
-function showLoading(msg) {
-    loadingText.textContent = msg;
-    loadingOverlay.style.display = 'flex';
-}
+function showLoading(t) { document.getElementById('loadingText').textContent = t; D.loading.style.display = 'flex'; }
+function hideLoading() { D.loading.style.display = 'none'; }

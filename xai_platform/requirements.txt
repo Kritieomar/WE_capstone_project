@@ -2,7 +2,6 @@ shap
 scikit-learn
 pandas
 numpy
-streamlit
 matplotlib
 joblib
 google-generativeai

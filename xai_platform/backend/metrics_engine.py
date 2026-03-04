@@ -8,7 +8,9 @@ from sklearn.metrics import (
     confusion_matrix,
     mean_squared_error,
     mean_absolute_error,
-    r2_score
+    r2_score,
+    roc_auc_score,
+    classification_report
 )
 
 # Configure logging
@@ -43,6 +45,29 @@ def evaluate_classification(model, X, y):
         'f1_score': float(f1),
         'confusion_matrix': cm.tolist()  # Convert numpy array to list for JSON serialization
     }
+    
+    # Classification report
+    try:
+        report = classification_report(y, y_pred, output_dict=True, zero_division=0)
+        metrics['classification_report'] = report
+    except Exception as e:
+        logging.warning(f"Failed to generate classification report: {e}")
+        
+    # ROC-AUC if applicable
+    if hasattr(model, 'predict_proba'):
+        try:
+            y_prob = model.predict_proba(X)
+            if len(np.unique(y)) > 2:
+                roc_auc = roc_auc_score(y, y_prob, multi_class='ovr', average='weighted')
+            else:
+                # Binary classification: pass probabilities of the positive class
+                if y_prob.shape[1] == 2:
+                    roc_auc = roc_auc_score(y, y_prob[:, 1])
+                else:
+                    roc_auc = roc_auc_score(y, y_prob)
+            metrics['auc_roc'] = float(roc_auc)
+        except Exception as e:
+            logging.warning(f"Failed to compute ROC-AUC: {e}")
     
     logging.info(f"Classification metrics computed: Accuracy={accuracy:.4f}, F1={f1:.4f}")
     return metrics
