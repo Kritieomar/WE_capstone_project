@@ -7,5 +7,26 @@
             "accuracy": 0.95,
             "f1_score": 0.94
         }
+    },
+    {
+        "timestamp": "2026-03-05T00:26:45.639178",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105324,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
     }
 ]

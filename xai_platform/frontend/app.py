@@ -31,6 +31,7 @@ def save_uploaded_file(uploaded_file):
     """Saves an uploaded file to a temporary file and returns the path."""
     suffix = os.path.splitext(uploaded_file.name)[1]
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    uploaded_file.seek(0)
     temp_file.write(uploaded_file.getbuffer())
     temp_file.close()
     return temp_file.name
@@ -57,6 +58,7 @@ if model_file and data_file:
     target_col = st.sidebar.selectbox("Select Target Column", options=df_preview.columns)
     
     # Needs to know max row index
+    data_file.seek(0)
     df_full = pd.read_csv(data_file)
     max_idx = max(0, len(df_full) - 1)
     
