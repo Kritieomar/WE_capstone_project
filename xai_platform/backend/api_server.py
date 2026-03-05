@@ -183,6 +183,29 @@ def analyze():
                     'feature_value': float(X_sample_trans.iloc[j, i]) if j < len(X_sample_trans) else 0
                 })
 
+        # Build Class Balance
+        class_balance = y.value_counts().to_dict()
+        class_balance = {str(k): int(v) for k, v in class_balance.items()}
+
+        # Build Feature Distributions (Sampled up to 1000 rows for UI performance)
+        feature_distributions = {}
+        sample_size_dist = min(1000, len(X))
+        if len(X) > sample_size_dist:
+            dist_sample_X = X.sample(n=sample_size_dist, random_state=42)
+            dist_sample_y = y.loc[dist_sample_X.index]
+        else:
+            dist_sample_X = X
+            dist_sample_y = y
+
+        for col in X.columns:
+            dist_by_class = {}
+            for cls_val in dist_sample_y.unique():
+                # Extract values for this feature where the target equals cls_val
+                vals = dist_sample_X[dist_sample_y == cls_val][col].dropna().tolist()
+                # Ensure they are standard python floats/ints/strings for JSON
+                dist_by_class[str(cls_val)] = [float(v) if isinstance(v, (np.floating, float)) else v for v in vals]
+            feature_distributions[col] = dist_by_class
+
         # Build Data Statistics
         data_stats = []
         for col in df.columns:
@@ -205,13 +228,56 @@ def analyze():
                 stats['max'] = '-'
             data_stats.append(stats)
 
+        # Build New Dataset Stats for Panel
+        total_rows = len(df)
+        feature_columns = df.shape[1] - 1
+        missing_values = int(df.isnull().sum().sum())
+        missing_pct = round((missing_values / (total_rows * df.shape[1])) * 100, 1) if total_rows > 0 else 0
+        duplicate_rows = int(df.duplicated().sum())
+        duplicate_pct = round((duplicate_rows / total_rows) * 100, 1) if total_rows > 0 else 0
+        
+        numeric_cols = df.select_dtypes(include=["number"]).columns
+        categorical_cols = df.select_dtypes(exclude=["number"]).columns
+        numeric_features = int(len(numeric_cols))
+        categorical_features = int(len(categorical_cols))
+        
+        if target_col in numeric_cols: numeric_features = max(0, numeric_features - 1)
+        if target_col in categorical_cols: categorical_features = max(0, categorical_features - 1)
+
+        dataset_stats_panel = {
+            'total_rows': total_rows,
+            'feature_columns': feature_columns,
+            'missing_values': missing_values,
+            'missing_pct': missing_pct,
+            'duplicate_rows': duplicate_rows,
+            'duplicate_pct': duplicate_pct,
+            'numeric_features': numeric_features,
+            'categorical_features': categorical_features
+        }
+
+        # Numeric feature mean & count for new Bar Chart
+        numeric_X = X.select_dtypes(include=["number"])
+        numeric_feature_dist = []
+        for col in numeric_X.columns:
+             mean_val = numeric_X[col].mean()
+             count_val = numeric_X[col].count()
+             numeric_feature_dist.append({
+                 'feature': col,
+                 'mean': float(mean_val) if not pd.isna(mean_val) else 0.0,
+                 'count': int(count_val)
+             })
+
         return jsonify({
             'success': True,
             'metrics': metrics,
             'feature_importance': feature_importance,
             'feature_names': feature_names,
             'shap_summary': shap_summary_data,
+            'class_balance': class_balance,
+            'feature_distributions': feature_distributions,
             'data_stats': data_stats,
+            'dataset_stats_panel': dataset_stats_panel,
+            'numeric_feature_dist': numeric_feature_dist,
             'num_samples': len(X_transformed),
             'num_features': X_transformed.shape[1],
             'model_type': type(core_model).__name__

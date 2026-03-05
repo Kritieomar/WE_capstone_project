@@ -134,6 +134,8 @@ D.analyzeBtn.addEventListener('click', async () => {
         appState = { ...appState, ...data };
         appState.targetCol = targetCol;
         appState.data_stats = data.data_stats;
+        appState.class_balance = data.class_balance;
+        appState.feature_distributions = data.feature_distributions;
         
         // Transition UI
         D.hero.style.display = 'none';
@@ -149,9 +151,9 @@ D.analyzeBtn.addEventListener('click', async () => {
         renderPieChart();
         renderFeatureImportance();
         populatePerformance();
-        buildWhatIfInputs();
-        buildDataPreview();
-        buildDataStats();
+        
+        if (typeof buildWhatIfInputs === 'function') buildWhatIfInputs();
+        buildDataInsights();
 
         // Initial local SHAP
         document.getElementById('localRowInput').value = 0;
@@ -523,57 +525,82 @@ function updatePredBox(valId, probId, prediction, probabilities) {
     }
 }
 
-// ================== Data Preview ==================
+
+// ================== Data Insights ==================
 function buildDataPreview() {
-    if(!appState.previewData.length) return;
-    const cols = Object.keys(appState.previewData[0]);
-    let h = '<table class="report-table"><thead><tr>' + cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
-    appState.previewData.forEach(row => {
-        h += '<tr>' + cols.map(c => `<td>${typeof row[c]==='number'?row[c].toFixed(3):row[c]}</td>`).join('') + '</tr>';
+    if (!appState.preview || !appState.preview.length) return;
+    const cols = appState.columns || Object.keys(appState.preview[0]);
+    let h = '<table class="report-table"><thead><tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+    appState.preview.forEach(row => {
+        h += '<tr>' + cols.map(c => `<td>${typeof row[c] === 'number' ? row[c].toFixed(3) : row[c]}</td>`).join('') + '</tr>';
     });
     h += '</tbody></table>';
-    document.getElementById('dataPreviewTable').innerHTML = h;
+    const el = document.getElementById('dataPreviewTable');
+    if (el) el.innerHTML = h;
 }
 
-// ================== Data Statistics ==================
-function buildDataStats() {
-    if(!appState.data_stats || !appState.data_stats.length) return;
-    
-    let h = `
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Column</th>
-                    <th>Data Type</th>
-                    <th>Missing</th>
-                    <th>Unique</th>
-                    <th>Min</th>
-                    <th>Mean</th>
-                    <th>Max</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    
-    appState.data_stats.forEach(stat => {
-        h += `
-            <tr>
-                <td class="class-name">${stat.column}</td>
-                <td><span class="badge-${stat.dtype.includes('int') || stat.dtype.includes('float') ? 'acc' : 'model'}">${stat.dtype}</span></td>
-                <td style="color: ${stat.missing > 0 ? '#f87171' : 'inherit'}">${stat.missing}</td>
-                <td>${stat.unique}</td>
-                <td>${stat.min}</td>
-                <td>${stat.mean}</td>
-                <td>${stat.max}</td>
-            </tr>
-        `;
-    });
-    
-    h += '</tbody></table>';
-    
-    const container = document.getElementById('dataStatsTable');
-    if (container) {
-        container.innerHTML = h;
+function buildDataInsights() {
+    buildDataPreview();
+
+    // 1. Class Balance Pie Chart
+    if (appState.class_balance) {
+        const labels = Object.keys(appState.class_balance);
+        const values = Object.values(appState.class_balance);
+        const traces = [{
+            type: 'pie',
+            labels: labels,
+            values: values,
+            hole: 0.5,
+            marker: { colors: ['#34d399', '#f87171', '#60a5fa', '#fbbf24'] },
+            textinfo: 'label+percent',
+            hoverinfo: 'label+value'
+        }];
+        const layout = { ...getPlotLayout(), showlegend: true, legend: {orientation: 'h', y: -0.2}, margin: {t:20, b:40, l:20, r:20} };
+        Plotly.newPlot('chartClassBalance', traces, layout, {responsive: true});
+    }
+
+    // 2. Dataset Stats Panel
+    if (appState.dataset_stats_panel) {
+        const p = appState.dataset_stats_panel;
+        const rows = [
+            ['Total Rows', p.total_rows],
+            ['Feature Columns', p.feature_columns],
+            ['Missing Values', `${p.missing_values} (${p.missing_pct}%)`],
+            ['Duplicate Rows', `${p.duplicate_rows} (${p.duplicate_pct}%)`],
+            ['Numeric Features', p.numeric_features],
+            ['Categorical Features', p.categorical_features]
+        ];
+        const panelHTML = rows.map(([label, val]) => `
+            <div class="stat-row">
+                <div class="stat-label">${label}</div>
+                <div class="stat-dots"></div>
+                <div class="stat-val">${val}</div>
+            </div>`).join('');
+        const container = document.getElementById('datasetStatsPanel');
+        if (container) container.innerHTML = panelHTML;
+    }
+
+    // 3. Feature Distribution Bar Chart
+    if (appState.numeric_feature_dist && appState.numeric_feature_dist.length) {
+        const features = appState.numeric_feature_dist.map(f => f.feature);
+        const means = appState.numeric_feature_dist.map(f => f.mean);
+        const hovers = appState.numeric_feature_dist.map(f =>
+            `Feature: ${f.feature}<br>Average Value: ${f.mean.toFixed(2)}<br>Count: ${f.count}`);
+        const trace = {
+            x: features,
+            y: means,
+            type: 'bar',
+            text: hovers,
+            hoverinfo: 'text',
+            marker: { color: '#60a5fa' }
+        };
+        const layout = {
+            ...getPlotLayout(),
+            xaxis: { title: 'Features', tickangle: -40 },
+            yaxis: { title: 'Average Value' },
+            margin: { t: 20, b: 80, l: 50, r: 20 }
+        };
+        Plotly.newPlot('chartFeatureDistMod', [trace], layout, {responsive: true});
     }
 }
 

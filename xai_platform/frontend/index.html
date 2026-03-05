@@ -66,7 +66,6 @@
                     <div class="feature-item"><span>✓</span> Confusion Matrix</div>
                     <div class="feature-item"><span>✓</span> ROC Curve</div>
                     <div class="feature-item"><span>✓</span> Prediction Explainer</div>
-                    <div class="feature-item"><span>✓</span> Data Insights</div>
                 </div>
 
                 <button class="btn-primary" id="analyzeBtn" disabled>
@@ -321,28 +320,37 @@
             </div>
 
             <!-- DATA INSIGHTS -->
-             <div class="dash-view" id="section-data-insights">
-                 <div class="section-heading">
+            <div class="dash-view" id="section-data-insights">
+                <div class="section-heading">
                     <h2>Data Insights</h2>
-                    <p>Dataset overview and detailed statistics.</p>
-                </div>
-                
-                <div class="dash-card full mt-4">
-                    <div class="card-title">Dataset Preview</div>
-                    <div class="table-container mt-2">
-                         <div id="dataPreviewTable"></div>
-                    </div>
+                    <p>Understand your training data — distributions, class balance, and feature correlations.</p>
                 </div>
 
+                <!-- Top Row: Feature Distribution (full width) -->
                 <div class="dash-card full mt-4">
-                    <div class="card-title">Feature Statistics</div>
-                    <p class="card-desc">Statistical summary of all columns in your dataset.</p>
-                    <div class="table-container mt-2" style="max-height: 500px; overflow-y: auto;">
-                         <div id="dataStatsTable"></div>
+                    <div class="card-title">Feature Distribution</div>
+                    <p class="card-desc">Average value of each numeric feature in the dataset.</p>
+                    <div class="chart-wrapper" id="chartFeatureDistMod" style="min-height: 350px;"></div>
+                </div>
+
+                <!-- Bottom Row: Class Balance & Dataset Stats -->
+                <div class="charts-row mt-4">
+                    <div class="dash-card half">
+                        <div class="card-title">Class Balance</div>
+                        <p class="card-desc">Imbalanced classes can cause the model to be biased toward the majority class.</p>
+                        <div class="chart-wrapper" id="chartClassBalance" style="min-height: 250px;"></div>
+                    </div>
+                    <div class="dash-card half">
+                        <div class="card-title">Dataset Stats</div>
+                        <p class="card-desc">Key statistics about your uploaded dataset.</p>
+                        <div class="stats-list-container mt-2" id="datasetStatsPanel">
+                            <!-- populated dynamically -->
+                        </div>
                     </div>
                 </div>
             </div>
 
+            </div>
         </section>
         
         <footer class="footer" style="display:none;" id="footer">

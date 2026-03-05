@@ -255,6 +255,35 @@ body {
     margin-bottom: 8px;
     letter-spacing: 1px;
 }
+
+/* Dataset Stats List */
+.stats-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 8px 0;
+}
+.stat-row {
+    display: flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.stat-label {
+    white-space: nowrap;
+}
+.stat-dots {
+    flex: 1;
+    border-bottom: 2px dotted rgba(255,255,255,0.1);
+    margin: 0 12px;
+    position: relative;
+    top: -4px;
+}
+.stat-val {
+    color: var(--accent-yellow);
+    font-weight: 700;
+}
 .select-input, .num-input, .text-input {
     width: 100%;
     background: rgba(0,0,0,0.3);
@@ -537,6 +566,10 @@ body {
     border-bottom: 1px solid rgba(255,255,255,0.1);
     color: var(--text-muted);
     font-weight: 600;
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    z-index: 10;
 }
 .report-table td {
     padding: 12px;
