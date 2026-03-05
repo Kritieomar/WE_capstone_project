@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAI Model Explanation Platform</title>
+    <meta name="description" content="Explainable AI platform with SHAP analysis, what-if simulations, and AI-powered insights.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">⚡</span>
+                <h1>XAI Platform</h1>
+            </div>
+            <p class="tagline">Explainable AI Analysis</p>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>1. Upload Model</h3>
+            <div class="upload-zone" id="modelDropZone">
+                <input type="file" id="modelFile" accept=".pkl,.joblib" hidden>
+                <span class="upload-icon">📦</span>
+                <p>Drop .pkl or .joblib</p>
+                <span class="file-name" id="modelFileName"></span>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>2. Upload Dataset</h3>
+            <div class="upload-zone" id="datasetDropZone">
+                <input type="file" id="datasetFile" accept=".csv" hidden>
+                <span class="upload-icon">📊</span>
+                <p>Drop .csv file</p>
+                <span class="file-name" id="datasetFileName"></span>
+            </div>
+        </div>
+
+        <div class="sidebar-section" id="settingsSection" style="display:none;">
+            <h3>3. Settings</h3>
+            <label for="targetSelect">Target Column</label>
+            <select id="targetSelect" class="select-input"></select>
+
+            <label for="rowIndex">Row Index for Local Explanation</label>
+            <input type="number" id="rowIndex" class="number-input" value="0" min="0">
+        </div>
+
+        <div class="sidebar-section">
+            <h3>AI Insights (Optional)</h3>
+            <input type="password" id="geminiKey" class="text-input" placeholder="Enter Gemini API Key">
+        </div>
+
+        <button class="btn-primary" id="analyzeBtn" disabled>
+            <span class="btn-icon">🔬</span> Run Analysis
+        </button>
+
+        <div class="sidebar-footer">
+            <p>XAI Platform v2.0</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Hero / Welcome -->
+        <section class="hero" id="heroSection">
+            <div class="hero-content">
+                <h1>Explainable AI<br><span class="gradient-text">Model Analysis Platform</span></h1>
+                <p>Upload your trained ML model and dataset to generate interactive SHAP explanations, what-if simulations, and AI-powered insights.</p>
+                <div class="hero-features">
+                    <div class="hero-feature"><span>📈</span> SHAP Analysis</div>
+                    <div class="hero-feature"><span>🔮</span> What-If Simulations</div>
+                    <div class="hero-feature"><span>🤖</span> AI Insights</div>
+                    <div class="hero-feature"><span>📊</span> Interactive Charts</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+            <div class="loader">
+                <div class="spinner"></div>
+                <p id="loadingText">Analyzing model...</p>
+            </div>
+        </div>
+
+        <!-- Dashboard (hidden initially) -->
+        <section class="dashboard" id="dashboard" style="display:none;">
+
+            <!-- Model Summary Cards -->
+            <div class="section-header">
+                <h2>Model Summary</h2>
+            </div>
+            <div class="metrics-grid" id="summaryCards"></div>
+
+            <!-- Dataset Preview -->
+            <div class="card" id="previewCard">
+                <div class="card-header">
+                    <h3>📋 Dataset Preview</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrapper" id="dataPreview"></div>
+                </div>
+            </div>
+
+            <!-- Model Metrics -->
+            <div class="section-header">
+                <h2>Model Metrics</h2>
+            </div>
+            <div class="metrics-grid" id="metricsCards"></div>
+
+            <!-- Confusion Matrix -->
+            <div class="card" id="confusionCard" style="display:none;">
+                <div class="card-header">
+                    <h3>🔢 Confusion Matrix</h3>
+                </div>
+                <div class="card-body">
+                    <div id="confusionMatrix"></div>
+                </div>
+            </div>
+
+            <!-- Feature Importance -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>📊 Feature Importance</h3>
+                    <span class="badge">SHAP</span>
+                </div>
+                <div class="card-body">
+                    <div id="featureImportanceChart" class="chart-container"></div>
+                </div>
+            </div>
+
+            <!-- SHAP Summary Plot -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>🎯 SHAP Summary Plot</h3>
+                    <span class="badge">Beeswarm</span>
+                </div>
+                <div class="card-body">
+                    <div id="shapSummaryChart" class="chart-container"></div>
+                </div>
+            </div>
+
+            <!-- Local Explanation -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>🔍 Individual Prediction Explanation</h3>
+                    <div class="inline-controls">
+                        <label>Row:</label>
+                        <input type="number" id="localRowInput" class="number-input-sm" value="0" min="0">
+                        <button class="btn-small" id="explainRowBtn">Explain</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="predictionInfo" class="prediction-info"></div>
+                    <div id="localExplanationChart" class="chart-container"></div>
+                    <div class="table-wrapper" id="localExplanationTable"></div>
+                </div>
+            </div>
+
+            <!-- What-If Simulator -->
+            <div class="card what-if-card">
+                <div class="card-header">
+                    <h3>🔮 What-If Simulator</h3>
+                    <span class="badge badge-purple">Interactive</span>
+                </div>
+                <div class="card-body">
+                    <p class="card-description">Modify feature values to see how the prediction changes in real-time.</p>
+                    <div class="whatif-grid" id="whatifInputs"></div>
+                    <button class="btn-secondary" id="whatifBtn">Run Simulation</button>
+                    <div id="whatifResult" class="whatif-result" style="display:none;"></div>
+                </div>
+            </div>
+
+            <!-- AI Insights -->
+            <div class="card ai-card">
+                <div class="card-header">
+                    <h3>🤖 AI Model Explanation</h3>
+                    <span class="badge badge-green">Gemini</span>
+                </div>
+                <div class="card-body">
+                    <button class="btn-secondary" id="aiInsightBtn">Generate AI Insights</button>
+                    <div id="aiInsightResult" class="ai-result"></div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

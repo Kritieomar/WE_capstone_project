@@ -28,5 +28,278 @@
                 ]
             ]
         }
+    },
+    {
+        "timestamp": "2026-03-05T18:23:43.654108",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:25:16.723262",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:25:42.052238",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:26:08.166773",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:29:20.386917",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:30:12.342783",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:30:30.902272",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:32:15.808790",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:32:46.754388",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:33:51.400878",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:38:07.854000",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:43:58.807029",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
+    },
+    {
+        "timestamp": "2026-03-05T18:47:24.415627",
+        "model_name": "test_model.joblib",
+        "dataset_name": "test_dataset.csv",
+        "metrics": {
+            "accuracy": 0.9929701230228472,
+            "precision": 0.9929827579655504,
+            "recall": 0.9929701230228472,
+            "f1_score": 0.9929632828105326,
+            "confusion_matrix": [
+                [
+                    209,
+                    3
+                ],
+                [
+                    1,
+                    356
+                ]
+            ]
+        }
     }
 ]

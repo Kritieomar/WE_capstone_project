@@ -1,8 +1,10 @@
-explainerdashboard
-google-generativeai
+shap
 scikit-learn
 pandas
 numpy
 streamlit
 matplotlib
 joblib
+google-generativeai
+flask
+flask-cors
